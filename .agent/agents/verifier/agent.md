@@ -1,6 +1,12 @@
 ---
 name: verifier
 description: 'Runs the build, lint, test suite and any end-to-end check, and reports the evidence. Executes commands but does not modify source.'
+tools:
+  - view_file
+  - grep_search
+  - find_by_name
+  - list_dir
+  - run_command
 subagent: true
 mainAgent: false
 model: inherit
