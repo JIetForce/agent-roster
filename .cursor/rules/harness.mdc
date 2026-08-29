@@ -1,0 +1,7 @@
+---
+description: Developer + reviewer harness contract for this repository
+alwaysApply: true
+---
+
+Read `AGENTS.md` before changing code in this repository. It defines the developer + reviewer loop
+you must follow. Invoke subagents explicitly: `/nextjs-developer`, then `/code-reviewer`.

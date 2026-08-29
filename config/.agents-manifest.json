@@ -1,0 +1,15 @@
+{
+  "generator": "scripts/sync-agents.mjs",
+  "files": [
+    ".agent/agents/code-reviewer/agent.md",
+    ".agent/agents/nextjs-developer/agent.md",
+    ".claude/agents/code-reviewer.md",
+    ".claude/agents/nextjs-developer.md",
+    ".codex/agents/code-reviewer.toml",
+    ".codex/agents/nextjs-developer.toml",
+    ".cursor/agents/code-reviewer.md",
+    ".cursor/agents/nextjs-developer.md",
+    ".devin/agents/code-reviewer.md",
+    ".devin/agents/nextjs-developer.md"
+  ]
+}

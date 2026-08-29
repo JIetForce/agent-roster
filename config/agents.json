@@ -1,0 +1,64 @@
+{
+  "harness": {
+    "max_review_cycles": 3,
+    "diff_dir": ".harness/review"
+  },
+  "tools": {
+    "devin": {
+      "developer": {
+        "model": "sonnet",
+        "allowed-tools": ["read", "grep", "glob", "exec", "edit", "write"]
+      },
+      "reviewer": {
+        "model": "sonnet",
+        "allowed-tools": ["read", "grep", "glob"],
+        "permissions": { "deny": ["write", "edit", "notebook_edit", "exec"] }
+      }
+    },
+    "antigravity": {
+      "developer": {
+        "subagent": true,
+        "mainAgent": false,
+        "model": "inherit",
+        "commandExecutionPolicy": "sandbox"
+      },
+      "reviewer": {
+        "subagent": true,
+        "mainAgent": false,
+        "model": "inherit",
+        "commandExecutionPolicy": "off",
+        "tools": ["view_file", "grep_search", "find_by_name", "list_dir"]
+      }
+    },
+    "claude": {
+      "developer": { "model": "sonnet" },
+      "reviewer": {
+        "model": "sonnet",
+        "effort": "high",
+        "tools": ["Read", "Glob", "Grep"]
+      }
+    },
+    "cursor": {
+      "developer": { "model": "inherit", "readonly": false, "is_background": false },
+      "reviewer": { "model": "inherit", "readonly": true, "is_background": false }
+    },
+    "codex": {
+      "developer": {
+        "name": "nextjs_developer",
+        "sandbox_mode": "workspace-write"
+      },
+      "reviewer": {
+        "name": "code_reviewer",
+        "sandbox_mode": "read-only",
+        "model_reasoning_effort": "high"
+      }
+    }
+  },
+  "tool_meta": {
+    "devin":       { "out_dir": ".devin/agents",  "ext": ".md",   "layout": "flat" },
+    "antigravity": { "out_dir": ".agent/agents",  "ext": ".md",   "layout": "dir", "file_name": "agent" },
+    "claude":      { "out_dir": ".claude/agents", "ext": ".md",   "layout": "flat" },
+    "cursor":      { "out_dir": ".cursor/agents", "ext": ".md",   "layout": "flat" },
+    "codex":       { "out_dir": ".codex/agents",  "ext": ".toml", "layout": "flat" }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "next-auth-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync:agents": "node scripts/sync-agents.mjs",
+    "check:agents": "node scripts/sync-agents.mjs --check",
+    "validate:agents": "node scripts/validate-agents.mjs",
+    "doctor:agents": "node scripts/doctor-agents.mjs",
+    "test:agents": "node --test"
+  }
+}

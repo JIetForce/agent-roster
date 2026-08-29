@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env*.local
+.DS_Store
+
+# Harness scratch — diffs handed to the reviewer, not source
+.harness/
