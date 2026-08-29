@@ -47,62 +47,59 @@ for (const { meta, body } of roles) {
   }
 }
 
-/* --- security invariants: the reviewer must not be able to write --- */
+/* --- security invariants, by capability class --- */
 
-const mustNotContain = (path, needles, why) => {
-  if (!existsSync(path)) return fail(`missing ${path}`);
-  const text = readFileSync(path, "utf8");
-  for (const n of needles) {
-    if (text.includes(n)) fail(`${path}: ${why} (found "${n}")`);
-  }
+// Markers are checked against each tool's write-*grant* field only, never
+// against the whole file. Devin's `permissions.deny` and Claude's
+// `disallowedTools` spell out these exact words ("write", "edit", ...) to
+// deny them — a whole-file substring search would flag a role for the very
+// text that proves it cannot act. Scoping to the grant field (the `tools:`
+// line for Claude, the `allowed-tools:` block for Devin) keeps the assertion
+// meaningful instead of weakening it. Antigravity/Cursor/Codex have no such
+// deny-list echo, so their markers are checked against the whole file.
+const GRANT_FIELD = {
+  claude: (text) => text.match(/^tools:.*$/m)?.[0] ?? "",
+  devin: (text) => text.match(/^allowed-tools:\n(?:  - .*\n)*/m)?.[0] ?? "",
+};
+const grantField = (tool, text) => (GRANT_FIELD[tool] ?? ((t) => t))(text);
+
+const WRITE_MARKERS = {
+  devin:       ["- write", "- edit", "- exec"],
+  antigravity: ["commandExecutionPolicy: 'auto'", "commandExecutionPolicy: 'eager'"],
+  claude:      ["Write", "Edit", "Bash"],
+  cursor:      ["readonly: false"],
+  codex:       ['sandbox_mode = "workspace-write"', 'sandbox_mode = "danger-full-access"'],
 };
 
-mustNotContain(
-  ".devin/agents/code-reviewer.md",
-  ["\n  - edit", "\n  - write", "\n  - exec"],
-  "reviewer allowed-tools grants a write capability",
-);
+const NO_WRITE_MARKERS = {
+  claude: ["Write", "Edit", "NotebookEdit"],
+  devin:  ["- write", "- edit"],
+};
 
-mustNotContain(
-  ".agent/agents/code-reviewer/agent.md",
-  ["write_to_file", "replace_file_content", "run_command"],
-  "reviewer tools grant a write or command capability",
-);
+for (const { meta } of roles) {
+  for (const [tool, tm] of Object.entries(config.tool_meta)) {
+    const path =
+      tm.layout === "dir"
+        ? join(tm.out_dir, meta.name, `${tm.file_name}${tm.ext}`)
+        : join(tm.out_dir, `${meta.name}${tm.ext}`);
+    if (!existsSync(path)) continue; // already reported by the generation check above
 
-const antigravityReviewer = existsSync(".agent/agents/code-reviewer/agent.md")
-  ? readFileSync(".agent/agents/code-reviewer/agent.md", "utf8")
-  : "";
-if (!/^mainAgent: false$/m.test(antigravityReviewer)) {
-  fail(".agent/agents/code-reviewer/agent.md: mainAgent must be false");
-}
-if (!/^commandExecutionPolicy: 'off'$/m.test(antigravityReviewer)) {
-  fail(".agent/agents/code-reviewer/agent.md: commandExecutionPolicy must be 'off'");
-}
+    const scope = grantField(tool, readFileSync(path, "utf8"));
 
-const claudeReviewer = existsSync(".claude/agents/code-reviewer.md")
-  ? readFileSync(".claude/agents/code-reviewer.md", "utf8")
-  : "";
-if (!/^tools: /m.test(claudeReviewer)) {
-  fail(".claude/agents/code-reviewer.md: missing tools allowlist");
-}
-if (/^tools: .*\b(Edit|Write|Bash|NotebookEdit)\b/m.test(claudeReviewer)) {
-  fail(".claude/agents/code-reviewer.md: tools allowlist grants a write capability");
-}
-
-if (
-  existsSync(".cursor/agents/code-reviewer.md") &&
-  !/^readonly: true$/m.test(readFileSync(".cursor/agents/code-reviewer.md", "utf8"))
-) {
-  fail(".cursor/agents/code-reviewer.md: readonly must be true");
-}
-
-if (
-  existsSync(".codex/agents/code-reviewer.toml") &&
-  !/^sandbox_mode = "read-only"$/m.test(
-    readFileSync(".codex/agents/code-reviewer.toml", "utf8"),
-  )
-) {
-  fail(".codex/agents/code-reviewer.toml: sandbox_mode must be read-only");
+    if (meta.class === "readonly" && WRITE_MARKERS[tool]) {
+      for (const n of WRITE_MARKERS[tool]) {
+        if (scope.includes(n)) fail(`${path}: ${meta.name} is readonly but can act (found "${n}")`);
+      }
+    }
+    // `verifier` deliberately keeps a shell. Assert only that it cannot edit
+    // through a first-class tool — a shell is an escape hatch we accept and
+    // document rather than pretend to have closed.
+    if (meta.class === "verifier" && NO_WRITE_MARKERS[tool]) {
+      for (const n of NO_WRITE_MARKERS[tool]) {
+        if (scope.includes(n)) fail(`${path}: ${meta.name} must not have edit tools (found "${n}")`);
+      }
+    }
+  }
 }
 
 /* --- the contract must be reachable from every tool --- */

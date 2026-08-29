@@ -17,6 +17,7 @@ const SKILL_PATHS = {
   ".agents/skills": ["antigravity", "devin"],
   ".agent/skills": ["antigravity"],
   ".devin/skills": ["devin"],
+  ".codex/skills": ["codex"],
 };
 
 // Paths a tool reads only for cross-tool compatibility, and which a
@@ -78,6 +79,59 @@ console.log("Harness doctor\n==============");
 
 auditCollisions("Agent definition discovery", AGENT_PATHS);
 auditCollisions("Skill discovery", SKILL_PATHS);
+
+console.log("\nMCP sources");
+const MCP_SOURCES = {
+  claude:      { path: ".mcp.json",              note: "project scope, generated" },
+  antigravity: { path: ".agent/mcp_config.json", note: "customization root" },
+  devin:       { path: null,                     note: "global only — edit ~/.config/devin/mcp_config.json by hand" },
+  codex:       { path: null,                     note: "per-agent `mcp_servers` in .codex/agents/*.toml, or global ~/.codex/config.toml" },
+  cursor:      { path: null,                     note: "unverified" },
+};
+// Informational only — a project may legitimately have no per-tool MCP file
+// yet, so these never touch `problems` / the exit code.
+for (const [tool, { path, note }] of Object.entries(MCP_SOURCES)) {
+  if (!path) console.log(`  info ${tool}: ${note}`);
+  else if (existsSync(path)) console.log(`  ok   ${tool}: ${path} (${note})`);
+  else console.log(`  warn ${tool}: ${path} missing (${note})`);
+}
+
+// Global skill installs, one per harness — not vendored into this repo, so
+// existence can only be checked against markers verified on a real machine.
+// Each tool below installs superpowers through a different mechanism, and
+// each marker was confirmed against this machine on 2026-08-29:
+//   Claude Code  — a plugin entry, ~/.claude/plugins/installed_plugins.json
+//   Codex        — a plugin entry, ~/.codex/config.toml
+//   Antigravity  — a declared skills path, ~/.gemini/config/skills.json
+//   Devin        — account-level "personal plugins", installed cloud-side.
+//                   There is no local file to check; report how to check it
+//                   instead of guessing "absent" for something installed.
+console.log("\nGlobal skills (installed per harness, not vendored here)");
+const HOME = process.env.HOME ?? "";
+
+const claudePlugins = `${HOME}/.claude/plugins/installed_plugins.json`;
+const claudeFound = existsSync(claudePlugins) &&
+  readFileSync(claudePlugins, "utf8").includes("superpowers@");
+console.log(`  ${claudeFound ? "found  " : "absent "} superpowers — Claude Code (${claudePlugins})`);
+
+const codexConfig = `${HOME}/.codex/config.toml`;
+const codexFound = existsSync(codexConfig) &&
+  readFileSync(codexConfig, "utf8").includes('[plugins."superpowers@claude-plugins-official"]');
+console.log(`  ${codexFound ? "found  " : "absent "} superpowers — Codex (${codexConfig})`);
+
+const geminiSkills = `${HOME}/.gemini/config/skills.json`;
+let antigravityFound = false;
+if (existsSync(geminiSkills)) {
+  const raw = readFileSync(geminiSkills, "utf8");
+  antigravityFound = [...raw.matchAll(/"path"\s*:\s*"([^"]*)"/g)]
+    .some(([, p]) => p.includes("superpowers"));
+}
+console.log(`  ${antigravityFound ? "found  " : "absent "} superpowers — Antigravity (${geminiSkills})`);
+
+console.log(
+  "  info    superpowers — Devin: personal plugins are account-level and cloud-side, " +
+    "no local marker exists; run `devin plugins list` to check",
+);
 
 console.log("\nContract reachability");
 report(existsSync("AGENTS.md"), "AGENTS.md present (Devin, Antigravity, Cursor, Codex)");

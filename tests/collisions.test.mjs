@@ -2,7 +2,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 describe("discovery collisions", () => {
   // The discovery matrix lives in scripts/doctor-agents.mjs and nowhere else.
@@ -31,9 +31,14 @@ describe("discovery collisions", () => {
 
   it("cursor's own directory exists to shadow its compat reads", () => {
     // Cursor also reads .claude/agents and .codex/agents; .cursor/ wins on name
-    // conflict, but only if the shadowing file is actually there.
+    // conflict, but only if the shadowing file is actually there. The role list
+    // itself lives in agents/roles/, not duplicated here, so it stays correct as
+    // roles are added or removed.
     if (existsSync(".claude/agents") || existsSync(".codex/agents")) {
-      for (const role of ["nextjs-developer", "code-reviewer"]) {
+      const roles = readdirSync("agents/roles", { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name);
+      for (const role of roles) {
         assert.ok(
           existsSync(`.cursor/agents/${role}.md`),
           `Cursor would fall through to a foreign definition of ${role}`,
