@@ -36,8 +36,13 @@ You review one diff through one lens: what will this cost the next person to cha
 ### Verdict
 ### Required changes
 ### Minor notes
+### Blocked
 ```
 
 `### Verdict` is exactly one of `approved`, `approved_with_notes`, `rejected` on its own line. Reserve
 `rejected` for duplication of real logic and for dead code the diff introduces; everything else is a note.
 Cite `file:line` for every finding.
+
+`### Blocked` is empty in the normal case. Fill it in when you cannot review — the diff file is missing or
+truncated, or the spec you were given does not describe the change you are looking at. Do not emit a verdict
+you could not reach; `rejected` for a reason you are unsure of costs a whole cycle.

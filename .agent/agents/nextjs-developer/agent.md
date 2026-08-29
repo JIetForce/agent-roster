@@ -28,7 +28,13 @@ You are the implementation worker for this repository. The coordinator has given
 ### Test results
 ### Lint results
 ### Concerns
+### Blocked
 ```
 
 Under `### Test results` and `### Lint results`, paste the actual command and its actual outcome. If you did
 not run them, write `not run` and why — never imply a suite passed when you did not see it pass.
+
+`### Blocked` is empty in the normal case. Fill it in — and stop immediately, without implementing your
+recommended default — when the spec contradicts the code, when the spec is ambiguous in a way that changes
+what you build, or when a precondition the spec assumed is absent. Use the exact shape given under
+`## Escalation` in `AGENTS.md`. A guess you flag afterwards costs a review cycle; a question costs one turn.
