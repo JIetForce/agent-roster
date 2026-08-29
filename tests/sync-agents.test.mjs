@@ -100,3 +100,20 @@ describe("reviewer is read-only in every tool", () => {
     );
   });
 });
+
+describe("harness skill projection", () => {
+  it("every generated skill names its tool's dispatch mechanism", () => {
+    const cases = [
+      [".claude/skills/dev-review-harness/SKILL.md", "subagent_type"],
+      [".devin/skills/dev-review-harness/SKILL.md", "run_subagent"],
+      [".agent/skills/dev-review-harness/SKILL.md", "invoke_subagent"],
+      [".codex/skills/dev-review-harness/SKILL.md", "spawn"],
+    ];
+    for (const [path, needle] of cases) {
+      const text = readFileSync(path, "utf8");
+      assert.ok(text.includes(needle), `${path}: missing dispatch instruction "${needle}"`);
+      assert.ok(!text.includes("<!-- DISPATCH -->"), `${path}: marker left unreplaced`);
+      assert.ok(text.includes("DO NOT EDIT"), `${path}: missing generated banner`);
+    }
+  });
+});

@@ -45,6 +45,30 @@ function parseFrontmatter(raw, path) {
   return { meta, body: m[2].trim() };
 }
 
+// Skill frontmatter is a subset of role frontmatter: no `class`, and the body
+// must carry the `<!-- DISPATCH -->` marker the per-tool dispatch line replaces.
+function parseSkillFrontmatter(raw, path) {
+  const text = raw.replace(/\r\n/g, "\n");
+  const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) throw new Error(`${path}: no YAML frontmatter`);
+  const meta = {};
+  for (const line of m[1].split("\n")) {
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+    const kv = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/);
+    if (!kv) throw new Error(`${path}: unsupported frontmatter line: ${line}`);
+    let v = kv[2].trim();
+    if (/^(".*"|'.*')$/.test(v)) v = v.slice(1, -1);
+    meta[kv[1]] = v;
+  }
+  for (const k of ["name", "description"]) {
+    if (!meta[k]) throw new Error(`${path}: frontmatter is missing \`${k}\``);
+  }
+  if (!m[2].includes("<!-- DISPATCH -->")) {
+    throw new Error(`${path}: skill body has no <!-- DISPATCH --> marker`);
+  }
+  return { meta, body: m[2].trim() };
+}
+
 /* ---------- serialisation ---------- */
 
 // Single-quoted YAML: the only escape is '' for '. Survives colons, quotes and
@@ -137,6 +161,17 @@ const renderers = {
   },
 };
 
+/* ---------- skills ---------- */
+
+// One canonical skill body per skill, with the <!-- DISPATCH --> marker replaced
+// by the dispatch instructions for the tool that will read this copy.
+function renderSkill(body, dispatchLine) {
+  const dispatch = dispatchLine
+    ? `## Dispatch\n\n${dispatchLine}`
+    : "## Dispatch\n\nUse your own subagent mechanism. If you have none, run the loop inline.";
+  return body.replace("<!-- DISPATCH -->", dispatch);
+}
+
 /* ---------- main ---------- */
 
 const config = JSON.parse(readFileSync(CONFIG_FILE, "utf8"));
@@ -166,6 +201,23 @@ for (const { meta, body } of roles) {
       outPath(toolMeta, meta.name),
       render(meta.name, meta.description, cfg, body),
     );
+  }
+}
+
+const SKILLS_DIR = "agents/skills";
+if (existsSync(SKILLS_DIR)) {
+  for (const entry of readdirSync(SKILLS_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const src = join(SKILLS_DIR, entry.name, "SKILL.md");
+    const raw = readFileSync(src, "utf8");
+    const { meta, body } = parseSkillFrontmatter(raw, src);
+    for (const [tool, sm] of Object.entries(config.skill_meta ?? {})) {
+      const out = join(sm.out_dir, entry.name, "SKILL.md");
+      const rendered =
+        `---\nname: ${meta.name}\ndescription: ${yamlStr(meta.description)}\n---\n\n` +
+        `${MD_BANNER}\n\n${renderSkill(body, config.dispatch_lines?.[tool])}\n`;
+      generated.set(out, rendered);
+    }
   }
 }
 

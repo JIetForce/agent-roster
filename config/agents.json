@@ -74,5 +74,17 @@
     "claude":      { "out_dir": ".claude/agents", "ext": ".md",   "layout": "flat" },
     "cursor":      { "out_dir": ".cursor/agents", "ext": ".md",   "layout": "flat" },
     "codex":       { "out_dir": ".codex/agents",  "ext": ".toml", "layout": "flat" }
+  },
+  "skill_meta": {
+    "claude":      { "out_dir": ".claude/skills" },
+    "devin":       { "out_dir": ".devin/skills" },
+    "antigravity": { "out_dir": ".agent/skills" },
+    "codex":       { "out_dir": ".codex/skills" }
+  },
+  "dispatch_lines": {
+    "claude":      "Dispatch each role with the `Agent` tool (`subagent_type: <role>`). Independent roles go in one message; the calls return synchronously.",
+    "devin":       "Dispatch each role with `run_subagent` using the `subagent_general` profile, instructing it to read `agents/roles/<role>/role.md`. **Run writers in the foreground** — a background subagent auto-denies tools you have not approved this session.",
+    "antigravity": "Dispatch each role with `invoke_subagent` (`TypeName: <role>`, `Workspace: inherit`). The call is **asynchronous** — poll every worker until it is `Idle` before reading anything it produced.",
+    "codex":       "Ask for each agent by name: \"spawn the `<role>` agent with this spec\". Codex waits for all spawned agents and returns a consolidated result."
   }
 }
