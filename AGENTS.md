@@ -22,23 +22,66 @@ sequence, keeping the two phases separate and applying the same output formats b
 ## The loop
 
 1. **Spec.** Rewrite the request as a spec: what changes, what must not change, how it will be verified.
-   Show the spec to the user before dispatching.
-2. **Implement.** Dispatch `nextjs-developer` with the spec. Wait for it to finish (see _Dispatch_ below —
-   on some tools waiting is not automatic).
-3. **Capture the diff.** Write it to a file rather than pasting it into a prompt:
+   Show the spec to the user before dispatching. Where the change is large enough that you would have to
+   guess, dispatch `researcher` first — several in parallel, one question each — and write the spec from
+   what they find.
+
+2. **Open the ledger.** Create `.harness/ledger.md` if this is cycle 1:
+
+   ```markdown
+   # <one-line description of the change>
+   ## Spec
+   <the spec, verbatim>
+   ## Cycle log
+   ```
+
+   The ledger is how this loop survives a context reset. If you resume with no memory of this change, read it
+   first. Append to it at the end of every cycle; never rewrite history in it.
+
+3. **Implement.** Dispatch `nextjs-developer` with the spec. Wait for it to finish (see _Dispatch_ below —
+   on some tools waiting is not automatic). If it returns a non-empty `### Blocked`, go to `## Escalation`.
+
+4. **Capture the diff.**
    ```bash
    mkdir -p .harness/review
    git diff > .harness/review/cycle-<N>.diff
    git status --porcelain >> .harness/review/cycle-<N>.diff
    ```
    Use `git diff HEAD` instead if the developer staged its work. `<N>` is the review cycle, starting at 1.
-4. **Review.** Dispatch `code-reviewer`. Give it: the spec, and the _path_ `.harness/review/cycle-<N>.diff`.
-   Never paste a diff inline — reviewers have read access and large diffs get truncated in prompts.
-5. **Decide.** The reviewer returns `approved`, `approved_with_notes`, or `rejected`.
-   - `rejected` → feed `### Required changes` back to `nextjs-developer` and return to step 2 with `<N>+1`.
-   - otherwise → summarise for the user.
-6. **Safety stop.** After **3** rejections (`max_review_cycles` in `config/agents.json`), stop looping and
-   escalate to the user with the outstanding findings. Do not attempt a fourth cycle.
+
+5. **Verify.** Dispatch `verifier` alone. Its evidence, not the developer's claim, is what the reviewers and
+   you rely on.
+
+6. **Review.** Dispatch `code-reviewer`, `security-reviewer` and `quality-reviewer` **in parallel**, each with
+   the spec and the _path_ `.harness/review/cycle-<N>.diff`. Never paste a diff inline — reviewers have read
+   access and large diffs get truncated in prompts.
+
+7. **Record.** Append one block to the ledger:
+
+   ```markdown
+   ### Cycle <N>
+   - verifier: <pass|fail> — <the failing command, if any>
+   - code-reviewer: <verdict> — <count> required
+   - security-reviewer: <verdict> — <count> required
+   - quality-reviewer: <verdict> — <count> required
+   - resolved since cycle <N-1>: <count>
+   - outstanding: <one line per unresolved required change, each with file:line>
+   ```
+
+8. **Decide.**
+   - Every verdict `approved` or `approved_with_notes`, and the verifier passed → summarise for the user. Done.
+   - Otherwise → merge all `### Required changes` into one list, hand it to `nextjs-developer`, and go to
+     step 3 with `<N>+1`.
+
+9. **Stop conditions.** The loop keeps going while it is converging. It stops when:
+   - **It stalls.** Two consecutive cycles (`stall_limit` in `config/agents.json`) in which the outstanding
+     list did not shrink. Two agents disagreeing about the same line will not resolve on the third attempt.
+     Escalate with both positions quoted.
+   - **A worker is blocked** and you cannot resolve it from the repository — see `## Escalation`.
+   - **The runaway guard trips.** Cycle `max_review_cycles` (8) completes without approval. This is a bug in
+     the spec or in the harness, not a signal to try again; escalate and say so.
+
+   Nothing else stops the loop. A rejection with a shrinking outstanding list is the loop working.
 
 ## Parallel dispatch
 
@@ -136,8 +179,9 @@ you have none, run the loop inline.
 - **Antigravity** — `invoke_subagent` with `TypeName: nextjs-developer` / `code-reviewer` and `Workspace: inherit`.
   **This call is asynchronous.** The subagent starts and you keep running. You must poll its state and wait
   for `Idle` before capturing the diff. Do not proceed on the assumption that the call blocked.
-- **Codex** — ask for the agent by name: "spawn the `nextjs_developer` agent with this spec", then
-  "spawn the `code_reviewer` agent with this spec and diff path". Wait for all spawned agents before continuing.
+- **Codex** — ask for the agent by name: "spawn the `nextjs-developer` agent with this spec", then
+  "spawn the `code-reviewer`, `security-reviewer` and `quality-reviewer` agents with this spec and diff path".
+  Codex waits for all spawned agents and returns one consolidated result.
 - **Cursor** — `/nextjs-developer <spec>`, then `/code-reviewer <spec + diff path>`.
 
 ## Output formats
