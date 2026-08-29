@@ -33,8 +33,11 @@ function parseFrontmatter(raw, path) {
     if (/^(".*"|'.*')$/.test(v)) v = v.slice(1, -1);
     meta[kv[1]] = v;
   }
-  for (const k of ["name", "description", "type"]) {
+  for (const k of ["name", "description", "class"]) {
     if (!meta[k]) throw new Error(`${path}: frontmatter is missing \`${k}\``);
+  }
+  if (meta.type) {
+    throw new Error(`${path}: \`type\` was replaced by \`class\` (readonly|verifier|implementer)`);
   }
   if (meta.description.includes("\n")) {
     throw new Error(`${path}: description must be a single line`);
@@ -150,11 +153,11 @@ const roles = readdirSync(ROLES_DIR, { withFileTypes: true })
 const generated = new Map();
 for (const { meta, body } of roles) {
   for (const [tool, toolMeta] of Object.entries(config.tool_meta)) {
-    const cfg = config.tools[tool]?.[meta.type];
+    const cfg = config.tools[tool]?.[meta.class];
     if (!cfg) {
       throw new Error(
-        `config/agents.json: tool "${tool}" has no entry for role type ` +
-          `"${meta.type}" (role ${meta.name}). Add one, or remove the tool.`,
+        `config/agents.json: tool "${tool}" has no entry for class ` +
+          `"${meta.class}" (role ${meta.name}). Add one, or remove the tool.`,
       );
     }
     const render = renderers[tool];

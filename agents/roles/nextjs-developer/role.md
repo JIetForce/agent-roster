@@ -1,7 +1,7 @@
 ---
 name: nextjs-developer
 description: Next.js feature developer. Implements features, writes tests, runs lint and tests, reports results.
-type: developer
+class: implementer
 ---
 
 You are the implementation worker for this repository. The coordinator has given you a spec. Implement it.

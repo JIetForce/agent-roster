@@ -1,57 +1,70 @@
 {
   "harness": {
-    "max_review_cycles": 3,
-    "diff_dir": ".harness/review"
+    "max_review_cycles": 8,
+    "stall_limit": 2,
+    "diff_dir": ".harness/review",
+    "ledger": ".harness/ledger.md"
   },
   "tools": {
     "devin": {
-      "developer": {
-        "model": "sonnet",
-        "allowed-tools": ["read", "grep", "glob", "exec", "edit", "write"]
-      },
-      "reviewer": {
+      "readonly": {
         "model": "sonnet",
         "allowed-tools": ["read", "grep", "glob"],
         "permissions": { "deny": ["write", "edit", "notebook_edit", "exec"] }
+      },
+      "verifier": {
+        "model": "sonnet",
+        "allowed-tools": ["read", "grep", "glob", "exec"],
+        "permissions": { "deny": ["write", "edit", "notebook_edit"] }
+      },
+      "implementer": {
+        "model": "sonnet",
+        "allowed-tools": ["read", "grep", "glob", "exec", "edit", "write"]
       }
     },
     "antigravity": {
-      "developer": {
-        "subagent": true,
-        "mainAgent": false,
-        "model": "inherit",
-        "commandExecutionPolicy": "sandbox"
-      },
-      "reviewer": {
+      "readonly": {
         "subagent": true,
         "mainAgent": false,
         "model": "inherit",
         "commandExecutionPolicy": "off",
         "tools": ["view_file", "grep_search", "find_by_name", "list_dir"]
+      },
+      "verifier": {
+        "subagent": true,
+        "mainAgent": false,
+        "model": "inherit",
+        "commandExecutionPolicy": "sandbox"
+      },
+      "implementer": {
+        "subagent": true,
+        "mainAgent": false,
+        "model": "inherit",
+        "commandExecutionPolicy": "sandbox"
       }
     },
     "claude": {
-      "developer": { "model": "sonnet" },
-      "reviewer": {
+      "readonly": {
         "model": "sonnet",
         "effort": "high",
         "tools": ["Read", "Glob", "Grep"]
-      }
+      },
+      "verifier": {
+        "model": "sonnet",
+        "tools": ["Read", "Glob", "Grep", "Bash"],
+        "disallowedTools": ["Edit", "Write", "NotebookEdit"]
+      },
+      "implementer": { "model": "sonnet" }
     },
     "cursor": {
-      "developer": { "model": "inherit", "readonly": false, "is_background": false },
-      "reviewer": { "model": "inherit", "readonly": true, "is_background": false }
+      "readonly": { "model": "inherit", "readonly": true, "is_background": false },
+      "verifier": { "model": "inherit", "readonly": false, "is_background": false },
+      "implementer": { "model": "inherit", "readonly": false, "is_background": false }
     },
     "codex": {
-      "developer": {
-        "name": "nextjs_developer",
-        "sandbox_mode": "workspace-write"
-      },
-      "reviewer": {
-        "name": "code_reviewer",
-        "sandbox_mode": "read-only",
-        "model_reasoning_effort": "high"
-      }
+      "readonly": { "sandbox_mode": "read-only", "model_reasoning_effort": "high" },
+      "verifier": { "sandbox_mode": "workspace-write" },
+      "implementer": { "sandbox_mode": "workspace-write" }
     }
   },
   "tool_meta": {
