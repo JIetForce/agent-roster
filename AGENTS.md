@@ -223,3 +223,16 @@ Generated profiles carry a `DO NOT EDIT` banner. Editing them is pointless — t
 - Check against the installed CLIs → `npm run doctor:agents`
 
 `npm test` is reserved for the application's own tests.
+
+### Skills
+
+- **Global (user scope), installed per harness:** general engineering discipline that is not about this
+  repository — `superpowers` (TDD, systematic debugging, verification), documentation lookup. Install with
+  each vendor's own installer; never vendor it into this repository and never hand-symlink it between tools.
+- **Project (generated):** procedures specific to *this* repository. Source of truth is
+  `agents/skills/<name>/SKILL.md`; `npm run sync:agents` projects it into each tool's skills directory with
+  that tool's dispatch mechanism substituted for `<!-- DISPATCH -->`.
+- **The test for which:** would this skill make sense in another repository? Global. Does it name a path in
+  this one? Project, and therefore generated.
+- Keep a skill body short. Once loaded it stays in context for the rest of the session, so every line is a
+  recurring cost. Bulk reference material goes in `references/` next to the `SKILL.md` and is read on demand.
