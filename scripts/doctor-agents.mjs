@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
 // Which tools scan which project paths for AGENT definitions.
@@ -160,14 +160,26 @@ for (const [bin, name] of [
   console.log(`  ${found ? "found  " : "absent "} ${name} (${bin})`);
 }
 
+// Read the role list rather than naming roles here. A hardcoded list is the
+// copy nobody updates, and this footer is the one place a human is told what
+// "correct" looks like.
+const roleNames = existsSync("agents/roles")
+  ? readdirSync("agents/roles", { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort()
+  : [];
+
 console.log(`
 Manual discovery checks — run each in the tool itself and confirm you see
-exactly ONE 'nextjs-developer' and ONE 'code-reviewer':
+exactly ONE of each of these ${roleNames.length} roles, and no duplicates:
+
+  ${roleNames.join(", ")}
 
   Claude Code   /agents
   Devin         /agents        (also confirm no duplicates from .agent/ or .claude/)
   Antigravity   /agents        (CLI) or the agent picker (IDE)
-  Cursor        type /  in the composer and look for the two names
+  Cursor        type /  in the composer and look for the names
   Codex         /agent
 `);
 
