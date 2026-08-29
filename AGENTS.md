@@ -40,6 +40,46 @@ sequence, keeping the two phases separate and applying the same output formats b
 6. **Safety stop.** After **3** rejections (`max_review_cycles` in `config/agents.json`), stop looping and
    escalate to the user with the outstanding findings. Do not attempt a fourth cycle.
 
+## Parallel dispatch
+
+There is no cap on how many workers you may run at once. There is a cap on how many may **write**.
+
+**Read-only roles** — `researcher`, `code-reviewer`, `security-reviewer`, `quality-reviewer` — may be
+dispatched in any number, in one batch. They cannot collide with each other. Dispatch them in a single message
+where your tool supports it; sequential dispatch of independent readers wastes wall-clock time and nothing else.
+
+**Writers** — any role of class `implementer` — are dispatched one at a time, unless you can give each one a
+**disjoint set of files** and you state that set in the spec you hand it. Two writers on one file is a lost
+edit, and no tool here arbitrates it. Where your tool offers per-worker isolation, prefer it:
+Claude Code `isolation: worktree`, Antigravity workspace `branch`.
+
+**The verifier runs alone.** It builds and tests the working tree; a writer editing that tree underneath it
+produces evidence for a state that never existed.
+
+A normal cycle therefore looks like:
+
+1. one `nextjs-developer` (writes),
+2. then one `verifier` (reads the result of the write),
+3. then `code-reviewer` + `security-reviewer` + `quality-reviewer` **together** (three lenses, one diff).
+
+Research fans out before step 1 and never overlaps it.
+
+### Per-tool concurrency facts
+
+- **Claude Code** — 20 concurrent subagents by default; nesting depth 3. Dispatch several `Agent` calls in one
+  message to run them together.
+- **Devin** — concurrent. A **background** subagent auto-denies any tool you have not already approved this
+  session, so the first run of a writer must be foreground. Readers are safe in background once `read`,
+  `grep` and `glob` are approved.
+- **Antigravity** — concurrent and **asynchronous**. `invoke_subagent` returns before the work is done. Poll
+  every worker to `Idle` before you read anything it produced. Nesting depth 10.
+- **Codex** — concurrent; it waits for all spawned agents and returns a consolidated result.
+  `agents.max_concurrent_threads_per_session` caps it.
+- **Cursor** — unverified. Dispatch sequentially there until `npm run doctor:agents` reports otherwise.
+
+**Workers do not dispatch workers.** Only the coordinator dispatches. A worker that wants another worker's
+output says so under `### Blocked` and lets you decide.
+
 ## Dispatch, per tool
 
 Use your own native mechanism. If you are not on this list, use whatever subagent facility you have, and if
