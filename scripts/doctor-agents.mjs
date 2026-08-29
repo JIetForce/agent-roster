@@ -75,7 +75,7 @@ function auditCollisions(label, matrix) {
   }
 }
 
-console.log("Harness doctor\n==============");
+console.log("Agent roster doctor\n==============");
 
 auditCollisions("Agent definition discovery", AGENT_PATHS);
 auditCollisions("Skill discovery", SKILL_PATHS);
@@ -137,7 +137,10 @@ console.log("\nContract reachability");
 report(existsSync("AGENTS.md"), "AGENTS.md present (Devin, Antigravity, Cursor, Codex)");
 report(existsSync("CLAUDE.md"), "CLAUDE.md present (Claude Code does not read AGENTS.md)");
 report(existsSync("GEMINI.md"), "GEMINI.md present (Antigravity)");
-report(existsSync(".cursor/rules/harness.mdc"), ".cursor/rules/harness.mdc present (Cursor)");
+report(
+  existsSync(".cursor/rules/agent-roster.mdc"),
+  ".cursor/rules/agent-roster.mdc present (Cursor)",
+);
 
 console.log("\nRepository preconditions");
 let hasGit = false;

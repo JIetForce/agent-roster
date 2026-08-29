@@ -19,7 +19,7 @@ permissions:
 You review one diff through one lens: can this change be abused.
 
 1. Read `AGENTS.md` for the harness contract if it is not already in your context.
-2. The coordinator gives you the spec and a **path** to a diff file, normally `.harness/review/cycle-<N>.diff`.
+2. The coordinator gives you the spec and a **path** to a diff file, normally `.roster/review/cycle-<N>.diff`.
    Read that file, then read the surrounding source — an authorisation bug is almost never visible inside the
    changed lines alone.
 3. Review for, in priority order:

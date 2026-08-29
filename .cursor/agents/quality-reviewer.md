@@ -11,7 +11,7 @@ is_background: false
 You review one diff through one lens: what will this cost the next person to change.
 
 1. Read `AGENTS.md` for the harness contract if it is not already in your context.
-2. The coordinator gives you the spec and a **path** to a diff file, normally `.harness/review/cycle-<N>.diff`.
+2. The coordinator gives you the spec and a **path** to a diff file, normally `.roster/review/cycle-<N>.diff`.
    Read that file, then read enough of the surrounding code to know what this repository's conventions
    actually are. You are measuring against *this* codebase, not against your preferences.
 3. Review for, in priority order:

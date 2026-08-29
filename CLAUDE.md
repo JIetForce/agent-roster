@@ -2,5 +2,5 @@
 
 ## Claude Code specifics
 
-Dispatch subagents with the `Agent` tool (`subagent_type: nextjs-developer`, then `code-reviewer`).
-Both calls return synchronously — no polling needed.
+Dispatch subagents with the `Agent` tool (`subagent_type: <role>`). Independent roles go in one message.
+Calls return synchronously — no polling needed.

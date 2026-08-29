@@ -2,8 +2,8 @@
   "harness": {
     "max_review_cycles": 8,
     "stall_limit": 2,
-    "diff_dir": ".harness/review",
-    "ledger": ".harness/ledger.md"
+    "diff_dir": ".roster/review",
+    "ledger": ".roster/ledger.md"
   },
   "tools": {
     "devin": {

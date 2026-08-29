@@ -8,15 +8,15 @@ const run = (args) =>
   execFileSync("node", args, { encoding: "utf8", stdio: "pipe" });
 
 const EXPECTED = [
-  ".devin/agents/nextjs-developer.md",
+  ".devin/agents/developer.md",
   ".devin/agents/code-reviewer.md",
-  ".agent/agents/nextjs-developer/agent.md",
+  ".agent/agents/developer/agent.md",
   ".agent/agents/code-reviewer/agent.md",
-  ".claude/agents/nextjs-developer.md",
+  ".claude/agents/developer.md",
   ".claude/agents/code-reviewer.md",
-  ".codex/agents/nextjs-developer.toml",
+  ".codex/agents/developer.toml",
   ".codex/agents/code-reviewer.toml",
-  ".cursor/agents/nextjs-developer.md",
+  ".cursor/agents/developer.md",
   ".cursor/agents/code-reviewer.md",
 ];
 
@@ -104,10 +104,10 @@ describe("reviewer is read-only in every tool", () => {
 describe("harness skill projection", () => {
   it("every generated skill names its tool's dispatch mechanism", () => {
     const cases = [
-      [".claude/skills/dev-review-harness/SKILL.md", "subagent_type"],
-      [".devin/skills/dev-review-harness/SKILL.md", "run_subagent"],
-      [".agent/skills/dev-review-harness/SKILL.md", "invoke_subagent"],
-      [".codex/skills/dev-review-harness/SKILL.md", "spawn"],
+      [".claude/skills/review-loop/SKILL.md", "subagent_type"],
+      [".devin/skills/review-loop/SKILL.md", "run_subagent"],
+      [".agent/skills/review-loop/SKILL.md", "invoke_subagent"],
+      [".codex/skills/review-loop/SKILL.md", "spawn"],
     ];
     for (const [path, needle] of cases) {
       const text = readFileSync(path, "utf8");

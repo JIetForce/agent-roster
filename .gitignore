@@ -4,10 +4,10 @@ node_modules/
 .DS_Store
 
 # Harness scratch — diffs handed to the reviewer, not source
-.harness/
+.roster/
 
 # Subagent-driven development scratch
 .superpowers/
 
 # Harness scratch — per-change ledger, not source
-.harness/ledger.md
+.roster/ledger.md

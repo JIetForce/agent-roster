@@ -1,0 +1,7 @@
+---
+description: Agent roster and its operating contract for this repository
+alwaysApply: true
+---
+
+Read `AGENTS.md` before changing code in this repository. It defines the roles and the loop
+you must follow. Invoke subagents explicitly by role name, e.g. `/developer`, then `/code-reviewer`.
