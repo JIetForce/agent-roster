@@ -2,23 +2,28 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 
 const run = (args) =>
   execFileSync("node", args, { encoding: "utf8", stdio: "pipe" });
 
-const EXPECTED = [
-  ".devin/agents/developer.md",
-  ".devin/agents/code-reviewer.md",
-  ".agent/agents/developer/agent.md",
-  ".agent/agents/code-reviewer/agent.md",
-  ".claude/agents/developer.md",
-  ".claude/agents/code-reviewer.md",
-  ".codex/agents/developer.toml",
-  ".codex/agents/code-reviewer.toml",
-  ".cursor/agents/developer.md",
-  ".cursor/agents/code-reviewer.md",
+// The role list is read from disk so the test keeps covering every role as
+// roles are added. The path *shapes* stay written out here on purpose: if they
+// were derived from config/agents.json the test would mirror the generator's
+// own logic and pass however wrong that config became.
+const SHAPES = [
+  (r) => `.devin/agents/${r}.md`,
+  (r) => `.agent/agents/${r}/agent.md`,
+  (r) => `.claude/agents/${r}.md`,
+  (r) => `.codex/agents/${r}.toml`,
+  (r) => `.cursor/agents/${r}.md`,
 ];
+
+const ROLES = readdirSync("agents/roles", { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => e.name);
+
+const EXPECTED = ROLES.flatMap((r) => SHAPES.map((shape) => shape(r)));
 
 describe("harness generation", () => {
   it("generates every expected profile", () => {
