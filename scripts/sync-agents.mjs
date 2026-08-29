@@ -221,6 +221,20 @@ if (existsSync(SKILLS_DIR)) {
   }
 }
 
+/* ---------- mcp ---------- */
+
+const MCP_FILE = "config/mcp.json";
+if (existsSync(MCP_FILE)) {
+  const mcp = JSON.parse(readFileSync(MCP_FILE, "utf8"));
+  const servers = Object.fromEntries(
+    Object.entries(mcp.servers).map(([name, def]) => {
+      const { roles, ...rest } = def; // `roles` is ours, not the wire format
+      return [name, rest];
+    }),
+  );
+  generated.set(".mcp.json", JSON.stringify({ mcpServers: servers }, null, 2) + "\n");
+}
+
 const previous = existsSync(MANIFEST_FILE)
   ? JSON.parse(readFileSync(MANIFEST_FILE, "utf8")).files ?? []
   : [];

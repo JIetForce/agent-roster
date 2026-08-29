@@ -34,6 +34,7 @@
     ".devin/agents/researcher.md",
     ".devin/agents/security-reviewer.md",
     ".devin/agents/verifier.md",
-    ".devin/skills/dev-review-harness/SKILL.md"
+    ".devin/skills/dev-review-harness/SKILL.md",
+    ".mcp.json"
   ]
 }
