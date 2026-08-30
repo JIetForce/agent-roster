@@ -5,10 +5,12 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 describe("discovery collisions", () => {
-  // The discovery matrix lives in scripts/doctor-agents.mjs and nowhere else.
-  // Duplicating it here would mean two copies that can disagree, and the copy
-  // in the test is the one nobody updates.
-  it("no tool discovers agent definitions from more than one source", () => {
+  // The matrix and the collision logic live in scripts/lib/discovery.mjs and are
+  // unit-tested against fixtures in tests/discovery.test.mjs. What this asserts
+  // is the end-to-end claim: run the doctor over THIS repository, as a human
+  // would, and it finds nothing. Duplicating the matrix here would mean two
+  // copies that can disagree, and the copy in the test is the one nobody updates.
+  it("the doctor reports no problem against this repository", () => {
     try {
       execFileSync("node", ["scripts/doctor-agents.mjs"], {
         encoding: "utf8",

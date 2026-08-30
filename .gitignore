@@ -3,11 +3,11 @@ node_modules/
 .env*.local
 .DS_Store
 
-# Harness scratch — diffs handed to the reviewer, not source
-.roster/
+# Review-loop scratch — captured diffs, regenerable, not source.
+# The ledger and its archive are deliberately NOT ignored: they are the loop's
+# recovery artifact, they must survive a fresh clone or worktree, and
+# Gemini-based harnesses skip git-ignored paths during file discovery.
+.roster/review/
 
 # Subagent-driven development scratch
 .superpowers/
-
-# Harness scratch — per-change ledger, not source
-.roster/ledger.md

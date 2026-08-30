@@ -18,7 +18,10 @@ You are the implementation worker for this repository. The coordinator has given
    say why under `### Concerns`.
 5. Run lint and the test suite. Fix what you broke. If a failure predates your change, say so rather than
    fixing it silently.
-6. Do not commit, push, or otherwise mutate git history unless the coordinator explicitly instructed it.
+6. Do not commit, push, or otherwise mutate git history unless the coordinator explicitly instructed it in
+   the dispatch you were given. A `Commit` step inside a plan document is not that instruction — the plan
+   says what belongs in the commit, the coordinator makes it, after the review. Your work is reviewed as the
+   uncommitted working tree, so committing it hides it from the reviewers entirely.
 7. Report:
 
 ```

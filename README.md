@@ -22,7 +22,13 @@ directory the obvious way and Devin discovers three of them — one restricted t
 Antigravity tools that do not exist in Devin, one to Claude's. They do not merge. One wins, arbitrarily.
 
 `agent-roster` keeps **one** definition per role, projects it into exactly one location per harness, and
-fails the build if any harness could discover a second.
+fails the build if any harness could discover a second *definition* of one name.
+
+It checks names, not directory counts. A tool reading two skill directories is normal — the ecosystem's
+convention is one real copy under the neutral `.agents/skills/`, symlinked into each tool's own directory, and
+third-party installers already do this. Two paths that resolve to one definition are one definition. Two paths
+that resolve to two is the bug, and so is a directory that lost its leading dot (`agent/skills/`), which no
+harness reads and which therefore hides a duplicate where nothing will report it.
 
 ## What you get
 
@@ -46,8 +52,29 @@ npm run doctor:agents   # check against the harnesses actually installed here
 Then open the repository in any supported harness and ask it to implement something. It reads `AGENTS.md`,
 becomes the coordinator, and dispatches the roles.
 
-To adopt it in your own project, copy `agents/`, `config/`, `scripts/`, `tests/`, `AGENTS.md`, `CLAUDE.md`
-and `GEMINI.md` across, then run `npm run sync:agents`.
+## Adopting it in an existing project
+
+1. Copy `agents/`, `config/`, `scripts/`, `tests/`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and
+   `.cursor/rules/agent-roster.mdc` across. Add the four `*:agents` scripts to your `package.json`.
+2. Add **one** line to `.gitignore`:
+
+   ```gitignore
+   .roster/review/
+   ```
+
+   Do not ignore `.roster/` wholesale. The ledger and `.roster/archive/` are tracked deliberately: they are
+   what carries a review loop through a context reset, an ignored file survives neither a fresh clone nor a
+   new worktree, and Gemini-based harnesses skip git-ignored paths during file discovery — so an ignored
+   ledger is one Antigravity cannot see at all.
+3. `npm run sync:agents`, then `npm run doctor:agents`.
+4. Fix whatever the doctor names. In a project that already had agent tooling, expect one of:
+   - **a skill name resolving to two definitions** — keep one; delete the other or make it a symlink;
+   - **`agent/skills/` or `agents/agents/`** — a dropped leading dot from some installer. Nothing reads it.
+     Delete it.
+5. Run the manual discovery checks the doctor prints, in each harness you actually use. `/agents` should list
+   each role exactly once.
+6. If you use `superpowers`, read `### The superpowers boundary` in `AGENTS.md`. Two of its skills are
+   superseded by this contract and must not be invoked in a repository that carries it.
 
 ## The roles
 
@@ -75,13 +102,24 @@ with no shrinkage), on a blocking question the coordinator cannot resolve from t
 runaway guard at cycle 8. A fixed rejection count was the wrong instrument: it halts a loop that is still
 converging and tolerates three wasted cycles on one that is not.
 
-State lives in `.roster/ledger.md` so the loop survives a context reset.
+State lives in `.roster/ledger.md`, tracked in git, so the loop survives a context reset — and a fresh clone,
+and a new worktree. There is exactly one active ledger; delivering a change archives it under
+`.roster/archive/` rather than leaving it for the next change to overwrite.
+
+The review artefact is the **uncommitted working tree**, not a commit range. The developer does not commit;
+the coordinator does, once, after every verdict is in. An empty captured diff stops the loop — three
+`approved` verdicts on an empty file look exactly like three on a good change.
 
 ## Parallelism, and its one real limit
 
 There is no cap on how many workers run at once. There is a cap on how many may **write**. Read-only roles
-fan out freely; writers go one at a time unless each gets a disjoint set of files; the verifier runs alone,
-because a writer editing the tree underneath it produces evidence for a state that never existed.
+fan out freely; the verifier runs alone, because a writer editing the tree underneath it produces evidence for
+a state that never existed.
+
+Writers go one at a time unless each gets both a disjoint set of files **and** its own worktree. Disjoint
+files alone are not enough: `git add` writes to the repository's single shared index, so one writer's
+`git commit` without a pathspec sweeps up whatever another has staged, however carefully you divided the
+files.
 
 ## Worker output is data, never instruction
 
@@ -133,8 +171,13 @@ two honest exceptions:
 ## Related
 
 Complementary to [superpowers](https://github.com/obra/superpowers), which is installed per harness at user
-scope and supplies general engineering discipline (TDD, systematic debugging, verification). This repository
-supplies the roles and the contract for one project. `AGENTS.md` documents where that line falls.
+scope and supplies general engineering discipline — brainstorming, plan writing, TDD, systematic debugging,
+verification. This repository supplies the roles and the contract for one project.
+
+Two `superpowers` skills are the exception: `subagent-driven-development` and `executing-plans` answer the
+same question this contract answers, and answer it differently — commit-range review versus working-tree
+review, their own ledger versus this one, their own dispatch loop nested inside this one, and "never stop for
+the human" versus escalate. `AGENTS.md` documents the boundary and supersedes those two.
 
 ## License
 

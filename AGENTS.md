@@ -24,24 +24,99 @@ You are the **coordinator**. You do not implement and you do not review. You do 
 If your harness has no subagent mechanism, say so plainly to the user and perform both roles yourself in
 sequence, keeping the two phases separate and applying the same output formats below.
 
+### This contract outranks the plan
+
+A plan document says *what* to build. This contract says *how* it is verified and accepted. Where a plan — or
+the generic planning skill that produced it — prescribes a commit, a review input, or a dispatch that differs
+from the loop below, the loop wins and the plan is adapted to it, never the reverse.
+
+The case that actually comes up is commits. Generic planning skills end every task with a commit step, because
+their review artefact is git history. This contract's review artefact is the **uncommitted working tree**:
+step 4 captures `git diff`, and `agents/roles/developer/role.md` forbids the developer committing unless you
+instructed it. So a plan's `Commit` step is not the developer's to run. It is yours, after step 8, once every
+verdict is in — using the `git add` scope the plan specifies. Do not delete those steps from a plan; they
+define what belongs in the commit.
+
+### The superpowers boundary
+
+`superpowers` is installed at user scope on every harness here, and it is complementary to this contract —
+except for two of its skills, which answer the same question this contract answers, and answer it differently.
+
+| superpowers skill | Status in a repository carrying this contract |
+| --- | --- |
+| `brainstorming` | **Use it.** It produces the spec on the architectural path — step 1. |
+| `writing-plans` | **Use it.** It produces the plan — step 1. |
+| `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `using-git-worktrees` | **Use them.** Discipline, no overlap. |
+| `subagent-driven-development` | **Superseded by this contract. Do not invoke it here.** |
+| `executing-plans` | **Superseded by this contract. Do not invoke it here.** |
+
+The two superseded skills are not merely redundant. They contradict this loop on four points, and running one
+inside it produces a review that silently examines nothing:
+
+- Their review artefact is a **commit range**; this contract's is the **uncommitted working tree**. An
+  implementer that commits per task leaves `git diff` empty, and three reviewers then approve an empty file.
+- They keep their own ledger at `.superpowers/sdd/<plan>/progress.md`; this contract's is `.roster/ledger.md`.
+  Two ledgers means neither is the record.
+- They dispatch their own implementer and reviewer per task, while this contract dispatches its own roles per
+  cycle. Nested, every worker runs twice.
+- They instruct you to rule on every ambiguity and never stop for the human. This contract instructs you to
+  stop and escalate — `## Escalation`. These two instructions cannot both be followed.
+
+Where your harness can disable an individual skill, disable those two in this repository. Where it cannot,
+this section is the instruction: you have now read it, so you know not to invoke them.
+
 ## The loop
 
-1. **Spec.** Rewrite the request as a spec: what changes, what must not change, how it will be verified.
-   Show the spec to the user before dispatching. Where the change is large enough that you would have to
-   guess, dispatch `researcher` first — several in parallel, one question each — and write the spec from
-   what they find.
+1. **Spec, sized to the change.** Every run of this loop has a spec. What *form* it takes depends on the
+   size of the change — and the ledger is written either way. A spec is never replaced by a ledger entry; it
+   is copied into one.
 
-2. **Open the ledger.** Create `.roster/ledger.md` if this is cycle 1:
+   | The change | Spec | Plan | This loop |
+   | --- | --- | --- | --- |
+   | A question, an explanation, read-only investigation | — | — | not engaged |
+   | **Bounded** — the flow you are changing already exists here to read, and one pass of one writer covers it | a paragraph **in chat** | — | one run |
+   | **Architectural** — a new subsystem, a change to an interface others depend on, or more than one independently testable deliverable | `superpowers:brainstorming` → a file under `docs/superpowers/specs/` | `superpowers:writing-plans` → a file under `docs/superpowers/plans/` | **one run per plan task** |
+
+   Understanding the kind of application is not enough to call something bounded: bounded means the flow you
+   are about to change is already here to read. When you are between two rows, take the lower one. The
+   ratchet is one-way — complexity discovered mid-change upgrades the row, and nothing downgrades it.
+
+   A spec in either form states three things: what changes, what must not change, and how it will be verified.
+
+   **This is a gate, not a notification.** Show the spec and *wait* for the user to agree before you dispatch
+   anything. The earlier wording was "show the spec", and it produced two populations of agents — those that
+   paused for an answer and those that read it as a courtesy and carried on.
+
+   Where writing the spec would mean guessing, dispatch `researcher` first — several in parallel, one
+   question each — and write the spec from what they find.
+
+2. **Open the ledger.** The active ledger is `.roster/ledger.md`, and there is exactly one of it. It is
+   **tracked in git** on purpose: it is what carries this loop through a context reset, and an ignored file
+   survives neither a fresh clone nor a new worktree — nor Gemini-based harnesses, which skip git-ignored
+   paths during file discovery, so an ignored ledger is one Antigravity cannot see at all.
+
+   Look at what is already there before you write:
+
+   - **Nothing** → create it, in the shape below.
+   - **It describes the change you are resuming** → read it first, then keep appending. It is the record of
+     what already happened, and you do not redo that work.
+   - **It describes a *different* change** → that change was delivered and never closed out. Archive it and
+     start a fresh one. **Never overwrite it in place** — that is somebody's only record of why a decision
+     was made.
+
+     ```bash
+     mkdir -p .roster/archive
+     git mv .roster/ledger.md ".roster/archive/$(date +%F)-<slug-of-the-old-change>.md"
+     ```
 
    ```markdown
    # <one-line description of the change>
    ## Spec
-   <the spec, verbatim>
+   <the spec, verbatim — on the architectural path, the plan task plus a link to the plan file>
    ## Cycle log
    ```
 
-   The ledger is how this loop survives a context reset. If you resume with no memory of this change, read it
-   first. Append to it at the end of every cycle; never rewrite history in it.
+   Append to it at the end of every cycle; never rewrite history in it.
 
 3. **Implement.** Dispatch `developer` with the spec. Wait for it to finish (see _Dispatch_ below —
    on some tools waiting is not automatic). If it returns a non-empty `### Blocked`, go to `## Escalation`.
@@ -53,6 +128,16 @@ sequence, keeping the two phases separate and applying the same output formats b
    git status --porcelain >> .roster/review/cycle-<N>.diff
    ```
    Use `git diff HEAD` instead if the developer staged its work. `<N>` is the review cycle, starting at 1.
+
+   **An empty diff stops the loop.** If the captured file contains no `diff --git` line, do not dispatch the
+   reviewers. There is nothing for them to read, and three `approved` verdicts on an empty file are
+   indistinguishable from three on a good change — this is the single most expensive way for this loop to
+   look like it is working while it is not. Establish which happened:
+
+   - **The developer committed its work**, against rule 6 of `agents/roles/developer/role.md`. Recapture
+     against the commit that was `HEAD` before you dispatched it — `git diff <that-sha>` — and state in the
+     next dispatch that the developer does not commit.
+   - **The developer changed nothing.** That is a `### Blocked` it failed to file. Go to `## Escalation`.
 
 5. **Verify.** Dispatch `verifier` alone. Its evidence, not the developer's claim, is what the reviewers and
    you rely on.
@@ -74,9 +159,15 @@ sequence, keeping the two phases separate and applying the same output formats b
    ```
 
 8. **Decide.**
-   - Every verdict `approved` or `approved_with_notes`, and the verifier passed → summarise for the user. Done.
+   - Every verdict `approved` or `approved_with_notes`, and the verifier passed → **you commit the work**,
+     with an explicit pathspec. One commit per run of this loop, not one per cycle; on the architectural path,
+     use the `git add` scope the plan's task specifies. Then append the delivery line to the ledger, archive
+     it as in step 2 so the next change opens a clean one, and summarise for the user. Done.
    - Otherwise → merge all `### Required changes` into one list, hand it to `developer`, and go to
      step 3 with `<N>+1`.
+
+   Argument order in the commit is a trap worth naming: everything after `--` is read as a path, so `-m` goes
+   before it — `git commit -m "<message>" -- <paths>`.
 
 9. **Stop conditions.** The loop keeps going while it is converging. It stops when:
    - **It stalls.** Two consecutive cycles (`stall_limit` in `config/agents.json`) in which the outstanding
@@ -98,8 +189,13 @@ where your harness supports it; sequential dispatch of independent readers waste
 
 **Writers** — any role of class `implementer` — are dispatched one at a time, unless you can give each one a
 **disjoint set of files** and you state that set in the spec you hand it. Two writers on one file is a lost
-edit, and no tool here arbitrates it. Where your harness offers per-worker isolation, prefer it:
-Claude Code `isolation: worktree`, Antigravity workspace `branch`.
+edit, and no tool here arbitrates it.
+
+**Concurrent writers require per-worker isolation.** Disjoint files are not sufficient on their own, because
+they do not partition the thing that actually collides: `git add` writes to the repository's single shared
+index, so one writer's `git commit` without a pathspec sweeps up whatever another writer has staged, no matter
+how carefully you divided the files. Use Claude Code `isolation: worktree` or an Antigravity workspace
+`branch`. Where your harness offers neither, writers run strictly one at a time — that is not a preference.
 
 **The verifier runs alone.** It builds and tests the working tree; a writer editing that tree underneath it
 produces evidence for a state that never existed.
@@ -236,8 +332,17 @@ repository is.
 ### Skills
 
 - **Global (user scope), installed per harness:** general engineering discipline that is not about this
-  repository — `superpowers` (TDD, systematic debugging, verification), documentation lookup. Install with
-  each vendor's own installer; never vendor it into this repository and never hand-symlink it between tools.
+  repository — `superpowers` (brainstorming, plan writing, TDD, systematic debugging, verification),
+  documentation lookup. Install with each vendor's own installer; never vendor it into this repository and
+  never hand-symlink a global install between tools. Two `superpowers` skills are superseded here — see
+  `### The superpowers boundary`.
+- **Third-party project skills you did not put there.** A component-library or SDK installer will drop skills
+  into this repository on its own. The convention it will follow is one real copy under the neutral
+  `.agents/skills/`, symlinked into each tool's own directory, and that is fine: `npm run doctor:agents`
+  accepts several source directories, because what breaks a harness is not two directories but one *name*
+  resolving to two different definitions. What it rejects is a second divergent copy of one skill, and a
+  directory that lost its leading dot — `agent/skills/` where `.agent/skills/` was meant — which no harness
+  reads and which therefore parks a duplicate somewhere nothing will ever report it.
 - **Project (generated):** procedures specific to *this* repository. Source of truth is
   `agents/skills/<name>/SKILL.md`; `npm run sync:agents` projects it into each tool's skills directory with
   that tool's dispatch mechanism substituted for `<!-- DISPATCH -->`.

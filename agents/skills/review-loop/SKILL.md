@@ -5,24 +5,37 @@ description: Run the multi-role developer + verifier + review loop for a code ch
 
 # Developer + Reviewer Harness
 
-`AGENTS.md` is the authoritative contract. Read it if it is not already in your context — this skill is the
-short form and omits the escalation boundary, which is not optional.
+`AGENTS.md` is the authoritative contract. Read it if it is not already in your context — this is the short
+form and it omits the escalation boundary, which is not optional. It outranks any plan document and any
+generic planning skill: where they disagree with the loop below, the loop wins.
 
-1. Rewrite the request as a concrete spec and show it to the user. Dispatch `researcher` first, in parallel,
-   if you would otherwise be guessing.
-2. Open `.roster/ledger.md` (create it on cycle 1, read it if you are resuming).
-3. Dispatch `developer` with the spec. One writer at a time.
+**`superpowers:subagent-driven-development` and `superpowers:executing-plans` are superseded here — do not
+invoke them.** They review a commit range and never stop for the human; this loop reviews the uncommitted
+working tree and escalates. The rest of `superpowers` is complementary.
+
+1. Write the spec and **wait for the user to agree** before dispatching anything. Bounded change → a
+   paragraph in chat. Architectural → `superpowers:brainstorming` for the spec file and
+   `superpowers:writing-plans` for the plan, then one run of this loop per plan task. Dispatch `researcher`
+   first, in parallel, if you would otherwise be guessing.
+2. Open `.roster/ledger.md` — one active ledger, tracked in git. Resuming this change → read it and keep
+   appending. A *different* change → `git mv` it into `.roster/archive/` first; never overwrite it.
+3. Dispatch `developer` with the spec. One writer at a time unless each has its own worktree. It does
+   **not** commit — the diff under review is the uncommitted working tree.
 4. Capture the diff to a file — never inline:
    ```bash
    mkdir -p .roster/review
    git diff > .roster/review/cycle-<N>.diff
    git status --porcelain >> .roster/review/cycle-<N>.diff
    ```
+   No `diff --git` line in it? **Stop.** Reviewers approving an empty file look exactly like reviewers
+   approving good work. Either the developer committed (recapture from the pre-dispatch SHA) or it changed
+   nothing (that is a `### Blocked` it did not file).
 5. Dispatch `verifier` alone.
 6. Dispatch `code-reviewer`, `security-reviewer` and `quality-reviewer` **in parallel**, each with the spec
    and the diff **path**.
-7. Append the cycle block to the ledger, then decide: all approved and verifier green → summarise. Otherwise
-   merge the required changes and return to step 3.
+7. Append the cycle block to the ledger, then decide: all approved and verifier green → **you** commit, once,
+   with an explicit pathspec (`git commit -m "<msg>" -- <paths>` — `-m` before `--`), archive the ledger, and
+   summarise. Otherwise merge the required changes and return to step 3.
 8. Stop only on a stall (two cycles with no shrinkage), an unresolvable `### Blocked`, or cycle 8.
 
 <!-- DISPATCH -->
