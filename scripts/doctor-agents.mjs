@@ -148,21 +148,26 @@ if (hasGit) {
       return false;
     }
   };
+  const active = existsSync(".roster/ledger.md");
+  // Say what is true. `git check-ignore` answers for a path whether or not the
+  // file is there, so "is tracked" would be a claim about a file that may not
+  // exist — and a doctor that overstates one check is a doctor you stop reading.
   report(
     !ignored(".roster/ledger.md"),
     ignored(".roster/ledger.md")
       ? ".roster/ledger.md is git-ignored — it must be tracked (ignore .roster/review/ instead)"
-      : ".roster/ledger.md is tracked (survives a reset, visible to Gemini-based harnesses)",
+      : active
+        ? ".roster/ledger.md is tracked (survives a reset, visible to Gemini-based harnesses)"
+        : "no active ledger, and .roster/ledger.md is not ignored — the next one will be tracked",
   );
   if (!ignored(".roster/review/")) {
     console.log("  warn .roster/review/ is not ignored — captured diffs are scratch, not source");
   }
-  const stale = existsSync(".roster/ledger.md");
-  console.log(
-    stale
-      ? "  info an active ledger is present — a new change archives it first, never overwrites it"
-      : "  info no active ledger — the next change opens one",
-  );
+  if (active) {
+    console.log(
+      "  info an active ledger is present — a new change archives it first, never overwrites it",
+    );
+  }
 }
 
 console.log("\nWorkspace trust");
