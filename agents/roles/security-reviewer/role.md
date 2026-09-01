@@ -21,7 +21,15 @@ You review one diff through one lens: can this change be abused.
 4. Judge exploitability, not resemblance to a vulnerability. State the attacker, the input and the outcome. A
    finding you cannot express that way belongs in `### Minor notes`.
 5. Do not edit files. Do not run any command that mutates repository state.
-6. Report:
+6. A finding about code or behaviour the diff did not touch — a pre-existing problem in the
+   surrounding code, or work you think should also happen — goes under `### Minor notes`, never under
+   `### Required changes`. The spec's scope is the coordinator's decision and not yours to widen, and
+   the spec's out-of-scope record (a `## Out of scope (already decided)` section in a file spec, or an
+   "Already decided:" list in a bounded chat spec), if it carries entries, is closed. But a defect the
+   diff introduced stays under `### Required changes` even if the spec did not ask for it and did not
+   anticipate it — an unintended regression is still this diff's defect, not a pre-existing one. Raise a
+   genuine blocker about scope under `### Blocked` instead of `### Required changes`.
+7. Report:
 
 ```
 ### Verdict
@@ -33,6 +41,12 @@ You review one diff through one lens: can this change be abused.
 `### Verdict` is exactly one of `approved`, `approved_with_notes`, `rejected` on its own line. Cite
 `file:line` for every finding.
 
+Write `none` under `### Required changes` when you found nothing — the coordinator's cycle-2+ dispatch
+rule keys on whether the previous cycle's `### Required changes` was `none`, so an omitted section is
+read as filed-nothing and drops you from the next cycle.
+
 `### Blocked` is empty in the normal case. Fill it in when you cannot review — the diff file is missing or
-truncated, or the spec you were given does not describe the change you are looking at. Do not emit a verdict
-you could not reach; `rejected` for a reason you are unsure of costs a whole cycle.
+truncated, the spec you were given does not describe the change you are looking at, or the spec's scope
+itself is wrong (a "what changes" line that misdescribes the change, or an out-of-scope entry that closes
+a defect the diff actually introduced). Do not emit a verdict you could not reach; `rejected` for a reason
+you are unsure of costs a whole cycle.

@@ -83,6 +83,15 @@ this section is the instruction: you have now read it, so you know not to invoke
 
    A spec in either form states three things: what changes, what must not change, and how it will be verified.
 
+   A spec also carries an out-of-scope record of decisions you have already made — findings you
+   overruled and will not re-litigate. Its form follows the spec's form: a `## Out of scope (already
+   decided)` section in a file spec, and for a bounded chat spec a trailing "Already decided:" list
+   you restate in the next dispatch. It starts empty. Every time you overrule a reviewer's required
+   change, you append it there with one line of reasoning **before you re-dispatch**. Reviewers are
+   stateless: a finding you overruled in cycle 2 comes back in cycle 3 unless the spec you hand them
+   says it was already decided. That is a whole cycle — five dispatches — for a question that was
+   already answered.
+
    **This is a gate, not a notification.** Show the spec and *wait* for the user to agree before you dispatch
    anything. The earlier wording was "show the spec", and it produced two populations of agents — those that
    paused for an answer and those that read it as a courtesy and carried on.
@@ -144,9 +153,23 @@ this section is the instruction: you have now read it, so you know not to invoke
 5. **Verify.** Dispatch `verifier` alone. Its evidence, not the developer's claim, is what the reviewers and
    you rely on.
 
-6. **Review.** Dispatch `reviewer` and `security-reviewer` **in parallel**, each with
-   the spec and the _path_ `.roster/review/cycle-<N>.diff`. Never paste a diff inline — reviewers have read
-   access and large diffs get truncated in prompts.
+6. **Review.** Dispatch the applicable reviewers **in parallel**, each with the spec and the _path_
+   `.roster/review/cycle-<N>.diff`. Never paste a diff inline — reviewers have read access and large
+   diffs get truncated in prompts.
+
+   Which reviewers are applicable:
+
+   - **Cycle 1** — every applicable reviewer. `reviewer` always; `security-reviewer` when the spec's
+     `Security-relevant paths touched` line is not `none`.
+   - **Intermediate cycles (2 and up, non-delivering)** — only the reviewers whose previous-cycle
+     `### Required changes` was not `none`.
+   - **The delivering cycle** — overrides the line above: every applicable reviewer, again, on the
+     final state, regardless of what any previous reduced cycle dropped.
+
+   **A cycle run with reduced fan-out can never authorise delivery.** If a reduced cycle comes back
+   clean, that is not a delivery: dispatch a fresh full-fan-out cycle, and only those verdicts count.
+   Without this, "the final cycle" is whatever the coordinator points at, and a reviewer that approved
+   in cycle 1 never sees what the cycle-3 fix did to its lens.
 
 7. **Record.** Append one block to the ledger:
 
@@ -159,9 +182,12 @@ this section is the instruction: you have now read it, so you know not to invoke
    - outstanding: <one line per unresolved required change, each with file:line>
    ```
 
-8. **Decide.**
-   - Every verdict `approved` or `approved_with_notes`, and the verifier passed → close the change
-     in this order, which is **one** commit, not two:
+8. **Decide.** Four exits, mutually exclusive and jointly exhaustive. The discriminator for each is
+   the cycle's fan-out, the reviewers' verdicts, and the verifier's verdict. "Every reviewer
+   approved" below means no `### Required changes` were filed — `approved_with_notes` counts as
+   approved.
+   - **(1) Delivery** — full-fan-out, every applicable reviewer approved, and the verifier passed →
+     close the change in this order, which is **one** commit, not two:
      1. Append the delivery line to the ledger.
      2. Archive it — `mkdir -p .roster/archive && mv .roster/ledger.md ".roster/archive/$(date +%F)-<slug>.md"`.
         Plain `mv`, **not** `git mv`: at this point the ledger has never been committed during this
@@ -188,8 +214,37 @@ this section is the instruction: you have now read it, so you know not to invoke
      got swept into the feature commit just so `git mv` had something tracked to move.
 
      Then summarise for the user. Done.
-   - Otherwise → merge all `### Required changes` into one list, hand it to `developer`, and go to
-     step 3 with `<N>+1`.
+   - **(2) Clean-reduced upgrade** — the cycle was reduced, every applicable reviewer approved (no
+     `### Required changes` filed), and the verifier passed → do not dispatch the developer.
+     Re-dispatch every applicable reviewer on the same unchanged tree as a fresh full-fan-out cycle,
+     and go back to step 6 with `<N>+1`. The reduced cycle's verdicts do not count; only this
+     full-fan-out cycle's do.
+   - **(3) Reviewer-clean, verifier failed** — every applicable reviewer approved (no `### Required
+     changes` filed) but the verifier failed → dispatch `developer` with the verifier's failure as
+     the work item, and go to step 3 with `<N>+1`. The review following the developer's fix is a
+     fresh full-fan-out cycle — return to step 6 with `<N>+1` dispatching every applicable reviewer,
+     not the intermediate reduced fan-out. This cycle produced no `### Required changes`, so step 6's
+     intermediate rule would otherwise drop every reviewer and leave the developer's new work with no
+     reviewer coverage and no path to a delivering cycle. Unlike exits (2) and (4), which re-review
+     an unchanged tree, this re-reviews a tree the developer has just changed. A failing build or
+     test suite is work even when no reviewer filed anything; re-dispatching reviewers on an
+     unchanged tree that still fails the verifier cannot converge. This covers a suite the verifier
+     ran that failed. It is distinct from the case where a spec-required suite was `not run` — that
+     one is the coordinator's to resolve, not the developer's, and is not this exit.
+   - **(4) Required changes filed** — at least one `### Required changes` item was filed → merge all
+     of them into one list. Any required change you are **not** passing to the developer is one you
+     overruled: append it to the spec's out-of-scope record (the `## Out of scope (already decided)`
+     section of a file spec, or the "Already decided:" list of a bounded chat spec) with one line of
+     reasoning **before you dispatch the next cycle**. If every required change was overruled, none
+     remains, **and the verifier passed**, do not dispatch the developer — an empty list produces an
+     empty diff, which step 4 treats as a loop-stopping error. Instead re-dispatch every applicable
+     reviewer on the same unchanged tree as a fresh full-fan-out cycle, and go back to step 6 with
+     `<N>+1`. This is the all-overruled branch, and it fires only when the cycle actually produced
+     `### Required changes` and the coordinator overruled every one of them — branches (2) and (3)
+     handle clean cycles (reduced, and verifier-failed respectively), not this one. If the verifier
+     failed, the developer takes the verifier's failure as a work item alongside any non-overruled
+     required changes, so the all-overruled re-dispatch never fires on a failing tree. Otherwise hand
+     the remaining list to `developer` and go to step 3 with `<N>+1`.
 
    Argument order in the commit is a trap worth naming: everything after `--` is read as a path, so `-m` goes
    before it — `git commit -m "<message>" -- <paths>`.
@@ -198,6 +253,9 @@ this section is the instruction: you have now read it, so you know not to invoke
    - **It stalls.** Two consecutive cycles (`stall_limit` in `config/agents.json`) in which the outstanding
      list did not shrink. Two agents disagreeing about the same line will not resolve on the third attempt.
      Escalate with both positions quoted.
+     Measure the outstanding list only across cycles that ran the same reviewers. A dropped reviewer
+     files nothing, so a reduced cycle can hide growth — the list can look stable while an un-dispatched
+     lens has findings nobody collected. Reduced cycles do not count toward the stall limit.
    - **A worker is blocked** and you cannot resolve it from the repository — see `## Escalation`.
    - **The runaway guard trips.** Cycle `max_review_cycles` (8) completes without approval. This is a bug in
      the spec or in this roster, not a signal to try again; escalate and say so.
@@ -225,11 +283,14 @@ how carefully you divided the files. Use Claude Code `isolation: worktree` or an
 **The verifier runs alone.** It builds and tests the working tree; a writer editing that tree underneath it
 produces evidence for a state that never existed.
 
-A normal cycle therefore looks like:
+A full-fan-out cycle — cycle 1 and the delivering cycle — therefore looks like:
 
 1. one `developer` (writes),
 2. then one `verifier` (reads the result of the write),
-3. then `reviewer` + `security-reviewer` **together** (two roles, two lenses in the reviewer plus security, one diff).
+3. then every applicable reviewer **together** (`reviewer` always; `security-reviewer` when the spec
+   declares security-relevant paths) — two roles, two lenses in the reviewer plus security, one diff.
+
+Intermediate cycles dispatch only the applicable subset (step 6), never the full fan-out.
 
 Research fans out before step 1 and never overlaps it.
 
@@ -312,7 +373,7 @@ you have none, run the loop inline. `<role>` below is any of the five: `develope
   agent with full tool access and the session's model, and the roster stops meaning anything. Put
   the spec (and, for a reviewer, the diff path) in `task`; the role definition itself is already the
   profile's system prompt and does not need to be repeated. `developer` and `verifier` run with
-  `is_background: false`; the researcher and both reviewers run with `is_background: true` —
+  `is_background: false`; the researcher and the reviewers run with `is_background: true` —
   see `### Per-tool concurrency facts`.
 - **Antigravity** — `invoke_subagent` with `TypeName: <role>` and `Workspace: inherit`.
   **This call is asynchronous.** The subagent starts and you keep running. You must poll every worker's state
@@ -340,9 +401,27 @@ The **reviewer** returns exactly these sections, and `### Verdict` must be one o
 ```
 ### Verdict
 ### Required changes
+#### Correctness
+#### Maintainability
 ### Minor notes
 ### Blocked
 ```
+
+`#### Correctness` and `#### Maintainability` under `### Required changes` are mandatory — write `none`
+under a lens that found nothing; a report that omits either subsection is incomplete and the coordinator
+re-dispatches it rather than counting it as a verdict. The **security-reviewer** keeps the plain shape
+below — it has one lens:
+
+```
+### Verdict
+### Required changes
+### Minor notes
+### Blocked
+```
+
+The **security-reviewer** writes `none` under `### Required changes` when it found nothing — the
+coordinator's cycle-2+ dispatch rule keys on whether the previous cycle's `### Required changes` was
+`none`, so an omitted section is read as filed-nothing and drops it from the next cycle.
 
 Every reviewer finding cites `file:line`.
 

@@ -36,7 +36,15 @@ leftover you get to if the first leaves you room — your report is judged incom
 5. Security is `security-reviewer`'s lens, and only security. If you see something there, put one line
    under `### Minor notes` and move on — do not review it.
 6. Do not edit files. Do not run any command that mutates repository state.
-7. Report:
+7. A finding about code or behaviour the diff did not touch — a pre-existing problem in the
+   surrounding code, or work you think should also happen — goes under `### Minor notes`, never under
+   `### Required changes`. The spec's scope is the coordinator's decision and not yours to widen, and
+   the spec's out-of-scope record (a `## Out of scope (already decided)` section in a file spec, or an
+   "Already decided:" list in a bounded chat spec), if it carries entries, is closed. But a defect the
+   diff introduced stays under `### Required changes` even if the spec did not ask for it and did not
+   anticipate it — an unintended regression is still this diff's defect, not a pre-existing one. Raise a
+   genuine blocker about scope under `### Blocked` instead of `### Required changes`.
+8. Report:
 
 ```
 ### Verdict
@@ -57,5 +65,7 @@ code the diff introduces; style preferences go under `### Minor notes`. Cite `fi
 finding. A finding you cannot locate in the diff is a finding you should not report.
 
 `### Blocked` is empty in the normal case. Fill it in when you cannot review — the diff file is missing or
-truncated, or the spec you were given does not describe the change you are looking at. Do not emit a
-verdict you could not reach; `rejected` for a reason you are unsure of costs a whole cycle.
+truncated, the spec you were given does not describe the change you are looking at, or the spec's scope
+itself is wrong (a "what changes" line that misdescribes the change, or an out-of-scope entry that closes
+a defect the diff actually introduced). Do not emit a verdict you could not reach; `rejected` for a reason
+you are unsure of costs a whole cycle.
