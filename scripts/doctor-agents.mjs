@@ -7,6 +7,7 @@ import {
   auditCollisions,
   strayPaths,
 } from "./lib/discovery.mjs";
+import { parseModelCatalog, pinnedModels } from "./lib/devin-models.mjs";
 
 let problems = 0;
 const report = (ok, msg) => {
@@ -199,6 +200,78 @@ if (agyTrust.checked) {
   } else {
     console.log(`  warn antigravity: workspace is not in ~/.gemini/trustedFolders.json`);
     console.log(`       (run 'agy' interactively or add '${process.cwd().toLowerCase()}' to trustedFolders.json for background/non-interactive subagents)`);
+  }
+}
+
+// Devin's own diagnosis of the profiles this roster generated. This is the
+// check that would have caught an ignored frontmatter key on day one.
+console.log("\nDevin profiles and models");
+let devinCli = true;
+try {
+  execFileSync("command", ["-v", "devin"], { stdio: "pipe", shell: true });
+} catch {
+  devinCli = false;
+}
+
+if (!devinCli) {
+  console.log("  info devin CLI absent — skipping profile and model checks");
+} else {
+  let doctorOut = "";
+  try {
+    doctorOut = execFileSync("devin", ["doctor"], { encoding: "utf8", stdio: "pipe" });
+  } catch (e) {
+    doctorOut = e.stdout ?? "";
+  }
+  for (const line of doctorOut.split("\n")) {
+    // Only a FAIL is this repository's problem. `devin doctor` also warns about
+    // things this roster does not own, and a warn that fails the run would make
+    // `doctor:agents` red for somebody else's stale config. Surface it without
+    // failing, exactly as the antigravity trust check above does.
+    if (/^\s*fail\b/i.test(line)) report(false, `devin doctor: ${line.trim()}`);
+    else if (/^\s*warn\b/i.test(line)) console.log(`  warn devin doctor: ${line.trim()}`);
+  }
+  const loaded = doctorOut.match(/(\d+) profile\(s\) loaded/);
+  if (loaded) console.log(`  ok   devin doctor: ${loaded[1]} subagent profile(s) loaded`);
+
+  const config = JSON.parse(readFileSync("config/agents.json", "utf8"));
+  const pins = pinnedModels(config).filter((p) => p.tool === "devin");
+  let catalog;
+  let modelsFailed = false;
+  try {
+    catalog = parseModelCatalog(
+      execFileSync("devin", ["models", "list"], { encoding: "utf8", stdio: "pipe" }),
+    );
+  } catch (e) {
+    // `devin models list` can fail two ways, and both must collapse to one
+    // honest failure line rather than a wall of false per-pin findings:
+    //   1. execFileSync throws — command missing, non-zero exit, etc.
+    //   2. The command exits 0 but prints an error body instead of a
+    //      catalogue — observed when the Devin free-tier quota is exhausted.
+    //      The body has no bracketed model rows, so parseModelCatalog returns
+    //      an empty Map, which is truthy. Guarding on `catalog` alone would
+    //      let the per-model loop run and report every pinned model as one
+    //      the command "does not offer" — four FAIL lines for one failure.
+    // An empty Map is the same signal as a thrown error: say so once and
+    // skip the per-model loop rather than inventing findings.
+    modelsFailed = true;
+    report(false, `devin models list failed: ${e.message}`);
+  }
+  if (!modelsFailed && catalog.size === 0) {
+    modelsFailed = true;
+    report(
+      false,
+      "devin models list returned no models (exited 0 with an empty catalogue — likely a quota or connection error)",
+    );
+  }
+  for (const { where, model } of modelsFailed ? [] : pins) {
+    const entry = catalog.get(model);
+    if (!entry) {
+      report(false, `devin: ${where} pins model "${model}", which devin models list does not offer`);
+    } else if (!entry.free) {
+      console.log(`  warn devin: ${where} pins "${model}" (${entry.label}) — no longer free`);
+    } else {
+      console.log(`  ok   devin: ${where} → ${model} (${entry.label}, free)`);
+    }
   }
 }
 

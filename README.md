@@ -101,7 +101,7 @@ review lens does not share the author's blind spots.
 Devin roles run free models during a promotion that **ends 2026-09-16**: `glm-5-2` (GLM-5.2 High)
 everywhere, `swe-1-7` (SWE-1.7 Max) for `code-reviewer`. Two traps worth naming: `swe-1-7-medium` is
 also free and is deliberately unused, and the bare alias `swe` is *not* free — it resolves to
-SWE-1.7 Lightning. The expiry is recorded here deliberately, because nothing enforces it yet — Task 4 of the roster's own plan will teach `npm run doctor:agents` to re-check both facts against the installed CLI.
+SWE-1.7 Lightning. `npm run doctor:agents` re-checks both facts against the installed CLI: it fails on a slug that no longer exists and warns on one that is no longer free, so the expiry reports itself rather than resting on this paragraph.
 
 ## The loop
 

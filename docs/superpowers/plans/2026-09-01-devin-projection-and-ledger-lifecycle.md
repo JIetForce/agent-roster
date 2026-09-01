@@ -715,6 +715,29 @@ git commit -m "feat(doctor): surface devin doctor and check every pinned model i
 - Produces: nothing. This is contract prose; there is no unit test for it, and the plan does not
   pretend otherwise — see Step 5 for how it is actually verified.
 
+- [ ] **Step 0: Make step 4's capture include new files**
+
+`AGENTS.md` step 4 captures the review artefact with `git diff`, which does not show untracked
+files at all — it appends `git status --porcelain`, but that gives names, not content. A task whose
+substance is new files therefore ships a diff containing none of it, and three reviewers approve
+what they could not read. This is the empty-diff failure the same step warns about, wearing a
+disguise: the file is not empty, it is merely missing the change.
+
+Replace step 4's command block in `AGENTS.md` with:
+
+```bash
+mkdir -p .roster/review
+git add -N -- <the paths the developer touched>   # or `git add -N .`
+git diff > .roster/review/cycle-<N>.diff
+git status --porcelain >> .roster/review/cycle-<N>.diff
+```
+
+and add this sentence after it: "`git add -N` records intent-to-add so a new file appears in
+`git diff` as a full addition. Without it the capture silently omits every file the change created,
+which is the same failure as an empty diff and harder to notice."
+
+Mirror the same fix in `agents/skills/review-loop/SKILL.md` step 4.
+
 - [ ] **Step 1: Reorder step 8 in `AGENTS.md`**
 
 Replace the first bullet of `8. **Decide.**`:
