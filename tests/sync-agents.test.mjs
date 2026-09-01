@@ -171,6 +171,28 @@ describe("harness skill projection", () => {
       assert.ok(text.includes("DO NOT EDIT"), `${path}: missing generated banner`);
     }
   });
+
+  it("devin's dispatch line names the profile, not the general subagent", () => {
+    const text = readFileSync(".devin/skills/review-loop/SKILL.md", "utf8");
+    assert.match(text, /profile: "<role>"/, "dispatch line does not pass a named profile");
+    // Pin the direction, not just the presence of `is_background`. A writer
+    // dispatched in the background has its `exec` and `edit` tools auto-denied
+    // without a prompt, so it returns a report having changed nothing — the
+    // empty-diff failure mode AGENTS.md devotes its "empty diff stops the loop"
+    // paragraph to. The line contains both `true` and `false`, so asserting
+    // only that each appears somewhere would pass under a reversal. Bind each
+    // value to the roles it applies to by matching the surrounding words.
+    assert.match(
+      text,
+      /`developer` and `verifier` run with `is_background: false`/,
+      "dispatch line does not put the writers (developer, verifier) in the foreground",
+    );
+    assert.match(
+      text,
+      /the researcher and the three reviewers run with `is_background: true`/,
+      "dispatch line does not put the readers (researcher, three reviewers) in the background",
+    );
+  });
 });
 
 describe("per-role model overrides", () => {

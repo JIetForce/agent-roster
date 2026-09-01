@@ -212,9 +212,12 @@ Research fans out before step 1 and never overlaps it.
 
 - **Claude Code** — 20 concurrent subagents by default; nesting depth 3. Dispatch several `Agent` calls in one
   message to run them together.
-- **Devin** — concurrent. A **background** subagent auto-denies any tool you have not already approved this
-  session, so the first run of a writer must be foreground. Readers are safe in background once `read`,
-  `grep` and `glob` are approved.
+- **Devin** — concurrent, but **only one foreground subagent at a time**. `researcher`,
+  `code-reviewer`, `security-reviewer` and `quality-reviewer` therefore go `is_background: true`:
+  their three tools are read-only and auto-approved, so a background run is safe, and it is the only
+  way to get the three lenses onto one diff at once. `developer` and `verifier` go
+  `is_background: false` — a background subagent auto-denies any tool you have not already approved
+  this session, so a background writer fails the first time it runs a command.
 - **Antigravity** — concurrent and **asynchronous**. `invoke_subagent` returns before the work is done. Poll
   every worker to `Idle` before you read anything it produced. Nesting depth 10.
 - **Codex** — concurrent; it waits for all spawned agents and returns a consolidated result.
@@ -277,7 +280,15 @@ you have none, run the loop inline. `<role>` below is any of the six: `developer
 
 - **Claude Code** — the `Agent` tool with `subagent_type: <role>`. Independent roles go in one message.
   Returns synchronously.
-- **Devin** — `run_subagent` with the `subagent_general` profile. In the `task`, include the spec and instruct the subagent to read `agents/roles/<role>/role.md` as its role definition. **Run any writer in the foreground.** Background subagents auto-deny any tool you have not already approved this session, so a background writer fails silently the first time it runs a command. Never use `subagent_explore`.
+- **Devin** — `run_subagent` with `profile: "<role>"`. The six roles are subagent profiles Devin
+  loads from `.devin/agents/`; confirm with `devin doctor`, which reports how many it loaded. The
+  profile is what binds the role's tool allowlist and its model, so **never substitute
+  `subagent_general` or `subagent_explore` for a role** — that hands the work to a general-purpose
+  agent with full tool access and the session's model, and the roster stops meaning anything. Put
+  the spec (and, for a reviewer, the diff path) in `task`; the role definition itself is already the
+  profile's system prompt and does not need to be repeated. `developer` and `verifier` run with
+  `is_background: false`; the researcher and the three reviewers run with `is_background: true` —
+  see `### Per-tool concurrency facts`.
 - **Antigravity** — `invoke_subagent` with `TypeName: <role>` and `Workspace: inherit`.
   **This call is asynchronous.** The subagent starts and you keep running. You must poll every worker's state
   and wait for `Idle` before reading anything it produced. Do not proceed on the assumption that it blocked.

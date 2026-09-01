@@ -169,8 +169,17 @@ Then `npm run sync:agents`. No per-harness edits.
 
 ## Verification status
 
-Every claim in the discovery matrix was checked against vendor documentation or a local installation, with
-two honest exceptions:
+Every claim in the discovery matrix was checked against vendor documentation or a local installation.
+
+**Devin's profile behaviour is verified empirically**, against CLI 3000.6.7 on 2026-09-01, not
+from documentation: `devin doctor` reports the six profiles loaded, `run_subagent`'s `profile`
+parameter is an enum containing all six role names, `model:` binds (a subagent dispatched under a
+profile reports that profile's model, not the parent session's), `allowed-tools:` is enforced (a
+readonly role is handed exactly `find_file_by_name`, `grep`, `read`), and `permissions:` is ignored
+outright. A profile with no `model:` key does not inherit the session model — it falls to Devin's
+own subagent default.
+
+Two honest exceptions remain:
 
 - **Cursor is unverified.** Its rows come from documentation only; `cursor-agent` was not installed on the
   machine this was built on. `npm run doctor:agents` reports what it can. Corrections welcome.
