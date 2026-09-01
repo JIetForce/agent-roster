@@ -99,6 +99,23 @@ this section is the instruction: you have now read it, so you know not to invoke
    Where writing the spec would mean guessing, dispatch `researcher` first — several in parallel, one
    question each — and write the spec from what they find.
 
+   A spec states one more line: **`Security-relevant paths touched:`** — the paths, or `none`. It is what
+   decides whether `security-reviewer` is dispatched at all (step 6). Count as security-relevant anything
+   that handles authentication or sessions, authorisation or ownership checks, secrets and key material,
+   an input boundary that parses untrusted data, an outbound request whose target is caller-influenced,
+   deserialisation, a widening of dependency or platform configuration, the choice of crypto primitives
+   or RNG, the removal or weakening of audit or security-event logging, rate limiting or brute-force
+   protection, security response headers (CORS, CSP, HSTS), or file-system permission or capability
+   handling. This list is intentionally non-exhaustive — when you are between yes and no, write the path
+   down: a reviewer that finds nothing costs one dispatch, and a missed authorisation bug costs a great
+   deal more. A pure presentation change — copy, colour, spacing, a chart's axis — is `none`, and this is
+   where most of the saving comes from.
+
+   The declaration is made here at step 1, but a cycle-2+ fix can newly touch a security-relevant path
+   the original declaration did not cover. Re-confirm the `Security-relevant paths touched:` line
+   whenever the diff's scope grows — before the delivering cycle — and amend it (and dispatch
+   `security-reviewer`) if it now understates the change.
+
 2. **Open the ledger.** The active ledger is `.roster/ledger.md`, and there is exactly one of it. It is
    **tracked in git** on purpose: it is what carries this loop through a context reset, and an ignored file
    survives neither a fresh clone nor a new worktree — nor Gemini-based harnesses, which skip git-ignored
@@ -133,12 +150,27 @@ this section is the instruction: you have now read it, so you know not to invoke
 4. **Capture the diff.**
    ```bash
    mkdir -p .roster/review
-   git add -N -- <the paths the developer touched>   # or `git add -N .`
-   git diff > .roster/review/cycle-<N>.diff
+   git add -N -- <the paths the developer touched>
+   git diff -- . ':(exclude).roster/review' > .roster/review/cycle-<N>.diff
    git status --porcelain >> .roster/review/cycle-<N>.diff
    ```
    `git add -N` records intent-to-add so a new file appears in `git diff` as a full addition. Without it the capture silently omits every file the change created, which is the same failure as an empty diff and harder to notice.
+   Do not use `git add -N .` as a shortcut: now that `.roster/review/` is tracked, it marks every
+   previous cycle's captured diff as intent-to-add, leaving stray `A` entries in the index and widening
+   what a later `git add -A` would commit. Scope the intent-to-add to the paths the developer touched.
    Use `git diff HEAD` instead if the developer staged its work. `<N>` is the review cycle, starting at 1.
+
+   The `:(exclude).roster/review` is not optional. `.roster/review/` is tracked (see the note below) so
+   that reviewers can read it, which means it is also visible to `git diff` — without the exclude, the
+   capture embeds every previously captured diff into the next one, and a diff that contains the previous
+   cycle's diff is unreviewable. A future editor who "simplifies" this back to `git diff` reintroduces
+   that failure silently.
+
+   `.roster/review/` **must not be git-ignored** in the consuming repository. Reviewers are `readonly` —
+   `read`, `grep`, `glob`, no `exec` — so a reviewer that cannot open the diff has no way to reconstruct
+   it, and Devin's background subagents and Gemini-based harnesses skip ignored paths during file
+   discovery entirely. An ignored review directory does not fail loudly; it returns three `### Blocked`
+   reports and costs a cycle. If a captured diff is unreadable to a reviewer, check this first.
 
    **An empty diff stops the loop.** If the captured file contains no `diff --git` line, do not dispatch the
    reviewers. There is nothing for them to read, and the reviewers' `approved` verdicts on an empty file are
@@ -152,6 +184,14 @@ this section is the instruction: you have now read it, so you know not to invoke
 
 5. **Verify.** Dispatch `verifier` alone. Its evidence, not the developer's claim, is what the reviewers and
    you rely on.
+
+   A verifier result of `fail` because a spec-required suite was `not run` is not a developer defect and
+   does not go back to the developer. It is yours: run the suite, or amend the spec's "how it is verified"
+   and say in the ledger that you did, or escalate. Do not deliver past it. The `not run` case is
+   enforced in exactly one place — the precondition at the top of step 8, which intercepts it before any
+   exit is evaluated — so it never reaches exit (3) (the developer path) or exit (4) (the required-changes
+   path). This is the rule Task 4 established: resolving a `not run` is the coordinator's, never the
+   developer's.
 
 6. **Review.** Dispatch the applicable reviewers **in parallel**, each with the spec and the _path_
    `.roster/review/cycle-<N>.diff`. Never paste a diff inline — reviewers have read access and large
@@ -171,6 +211,26 @@ this section is the instruction: you have now read it, so you know not to invoke
    Without this, "the final cycle" is whatever the coordinator points at, and a reviewer that approved
    in cycle 1 never sees what the cycle-3 fix did to its lens.
 
+   **The security gate has a backstop.** A spec that wrongly declares `none` for a change that does
+   touch security-relevant paths skips `security-reviewer` entirely, and its `### Blocked` escape hatch
+   is unreachable because it never runs. The `reviewer` runs on every applicable cycle, so it is the one
+   to catch this: when it sees the diff touching something the spec declared `none` for, it files that
+   as a `### Required changes` finding, not a note — a defect in the spec the coordinator must fix
+   (amend the `Security-relevant paths touched:` line and re-dispatch with `security-reviewer`) before
+   delivery. The `reviewer` flags the misdeclaration; it does not perform the security review. See
+   `agents/roles/reviewer/role.md` for the operational rule.
+
+   **A security-gate misdeclaration finding is not closeable by the out-of-scope record.** The
+   out-of-scope record (step 1) exists to record decisions you overruled so a stateless reviewer does
+   not re-raise them, but a gate misdeclaration is not a decision you get to overrule: it is a defect in
+   the spec that closed a gate which should have reviewed the diff. The only valid resolutions are to
+   amend the `Security-relevant paths touched:` line and dispatch `security-reviewer`, or to escalate to
+   the human. Appending the finding to the out-of-scope record is not a valid resolution — it leaves the
+   change with no security review on every later cycle, including the delivering cycle, because the
+   reviewer reads the out-of-scope entry as closed and does not re-file. The reviewer re-files this
+   finding on every cycle where the misdeclaration stands, including the delivering cycle, until you
+   amend the declaration or escalate.
+
 7. **Record.** Append one block to the ledger:
 
    ```markdown
@@ -186,6 +246,16 @@ this section is the instruction: you have now read it, so you know not to invoke
    the cycle's fan-out, the reviewers' verdicts, and the verifier's verdict. "Every reviewer
    approved" below means no `### Required changes` were filed — `approved_with_notes` counts as
    approved.
+
+   **Precondition — the `not run` case.** Before evaluating the exits, check whether the verifier's
+   `fail` (if any) was caused by a spec-required suite being `not run` rather than run-and-failed.
+   That case is the coordinator's, not the developer's (step 5): run the suite, amend the spec's "how
+   it is verified" and record it in the ledger, or escalate — and only then evaluate the exits. The
+   four exits below assume the verifier's `fail`, when present, came from a suite it ran and that
+   failed; a `not run` never reaches them. This is the single place the `not run` case is handled, so
+   it does not also match exit (3) (which would send it to the developer) or exit (4) (which would
+   treat it as a required-changes filing): a `not run` with no findings, with all findings overruled,
+   or with findings remaining all resolve here and nowhere else.
    - **(1) Delivery** — full-fan-out, every applicable reviewer approved, and the verifier passed →
      close the change in this order, which is **one** commit, not two:
      1. Append the delivery line to the ledger.
@@ -195,18 +265,17 @@ this section is the instruction: you have now read it, so you know not to invoke
      3. Stage, then commit — **two commands, not one**:
 
         ```bash
-        git add -- <source paths> .roster
-        git commit -m "<message>" -- <source paths> .roster
+        git add -- <source paths> .roster/archive
+        git commit -m "<message>" -- <source paths> .roster/archive
         ```
 
-        `.roster` is safe as a whole directory: `.roster/review/` is git-ignored, so the archived
-        ledger is the only thing under it that can be staged. The `git add` is not optional and
-        this order is not stylistic — `git commit -- <paths>` only ever commits paths git already
-        tracks, and under this ordering the archived ledger is always a **new** file. When the
-        pathspec matches nothing tracked git aborts with `pathspec ... did not match any file(s)
-        known to git`; when it matches something tracked — the normal case here, since `.roster`
-        always matches earlier archives — git exits 0 and silently omits the new file, so the
-        commit looks complete but contains no ledger. On the architectural path, use the paths
+        Stage `.roster/archive` specifically, not `.roster` — the review directory is tracked now, and
+        captured diffs are working scratch that does not belong in the delivery commit. The `git add` is
+        not optional and this order is not stylistic — `git commit -- <paths>` only ever commits paths git
+        already tracks, and under this ordering the archived ledger is always a **new** file. When the
+        pathspec matches nothing tracked git aborts; when it matches something tracked — the normal case,
+        since `.roster/archive` always matches earlier archives — git exits 0 and silently omits the new
+        file, so the commit looks complete but contains no ledger. On the architectural path, use the paths
         the plan's task specifies.
 
      One commit per run of this loop, not one per cycle and not one per artefact. Committing before
@@ -229,8 +298,8 @@ this section is the instruction: you have now read it, so you know not to invoke
      an unchanged tree, this re-reviews a tree the developer has just changed. A failing build or
      test suite is work even when no reviewer filed anything; re-dispatching reviewers on an
      unchanged tree that still fails the verifier cannot converge. This covers a suite the verifier
-     ran that failed. It is distinct from the case where a spec-required suite was `not run` — that
-     one is the coordinator's to resolve, not the developer's, and is not this exit.
+     ran that failed; a `not run` is intercepted by the step 8 precondition before this exit is
+     evaluated, so it never reaches this branch.
    - **(4) Required changes filed** — at least one `### Required changes` item was filed → merge all
      of them into one list. Any required change you are **not** passing to the developer is one you
      overruled: append it to the spec's out-of-scope record (the `## Out of scope (already decided)`

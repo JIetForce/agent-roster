@@ -99,6 +99,50 @@ lenses read past.
 Both models are free **until 2026-09-16**. After that date this allocation is a cost decision, not a
 free one, and `npm run doctor:agents` will start warning that a pinned model is no longer free.
 
+### `.roster/review/` must be un-ignored (2026-09-02 amendment)
+
+The roster contract changed on 2026-09-02 so that `.roster/review/` is **tracked**, not git-ignored.
+Reviewers are `readonly` (`read`, `grep`, `glob`, no `exec`), so a reviewer handed a path it cannot
+open has no way to reconstruct the diff — and Devin background subagents and Gemini-based harnesses
+skip git-ignored paths during file discovery entirely, returning `### Blocked` reports that cost a
+cycle. Two consumer-side changes follow from this, both required by the port:
+
+1. **Remove `.roster/review/` from `next-auth/.gitignore`.** The captured diffs are regenerable
+   scratch, but they must be *readable* scratch; tracking them is the cheapest way to guarantee that.
+   The ledger and its archive remain tracked as before.
+2. **Narrow the delivery commit's pathspec from `.roster` to `.roster/archive`.** Step 8 of the new
+   `AGENTS.md` stages `.roster/archive` specifically, because `.roster/review/` is now tracked and
+   captured diffs do not belong in the delivery commit. Copying the new `AGENTS.md` brings this with
+   it; this note is here so a porter who copies the contract without re-reading step 8 does not keep
+   the old `git add -- .roster` and sweep review scratch into the delivery.
+
+The capture command in step 4 also gained `':(exclude).roster/review'` so a tracked review directory
+does not embed the previous cycle's diff into the next capture. That comes in with the `AGENTS.md`
+copy; no consumer action beyond the two items above.
+
+**One trap the tracked review directory introduces.** A careless `git add -A` or `git commit -a`
+outside this contract can now sweep a captured diff into history, because `.roster/review/` is no
+longer ignored. The contract never commits that directory — delivery stages `.roster/archive`
+specifically (step 8), and the capture command excludes `.roster/review` from its own diff — so
+consumers should treat `.roster/review/` as regenerable scratch and avoid bare `git add -A` /
+`git commit -a` while a cycle's diff is sitting in it.
+
+The contract is prose and cannot enforce a consumer's git hygiene, so consumers should add a
+pre-commit hook that blocks `.roster/review/` from entering history. A minimal hook:
+
+```bash
+# .git/hooks/pre-commit (or via husky/lefthook as the project already does)
+if git diff --cached --name-only -- '.roster/review/' | grep -q .; then
+  echo "error: .roster/review/ is regenerable scratch and must not be committed." >&2
+  echo "       The contract stages .roster/archive for delivery, never .roster/review/." >&2
+  exit 1
+fi
+```
+
+This turns the contract's "never commit `.roster/review/`" from a rule an agent can forget into a
+gate the repository enforces. The hook is consumer-side, not part of this roster, so it is not copied
+by the port — each consumer adds it once.
+
 ## Verification
 
 Run in `next-auth` after `npm run sync:agents`:

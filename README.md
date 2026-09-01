@@ -56,16 +56,13 @@ becomes the coordinator, and dispatches the roles.
 
 1. Copy `agents/`, `config/`, `scripts/`, `tests/`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and
    `.cursor/rules/agent-roster.mdc` across. Add the four `*:agents` scripts to your `package.json`.
-2. Add **one** line to `.gitignore`:
-
-   ```gitignore
-   .roster/review/
-   ```
-
-   Do not ignore `.roster/` wholesale. The ledger and `.roster/archive/` are tracked deliberately: they are
-   what carries a review loop through a context reset, an ignored file survives neither a fresh clone nor a
-   new worktree, and Gemini-based harnesses skip git-ignored paths during file discovery — so an ignored
-   ledger is one Antigravity cannot see at all.
+2. Do **not** add `.roster/review/` to `.gitignore`. The ledger and `.roster/archive/` are tracked
+   deliberately, and so is `.roster/review/` — reviewers are `readonly` with no `exec` fallback, and
+   Devin background subagents and Gemini-based harnesses skip git-ignored paths during file discovery,
+   so an ignored review directory returns `### Blocked` reports and costs a cycle. Do not ignore
+   `.roster/` wholesale either: an ignored file survives neither a fresh clone nor a new worktree, and
+   Gemini-based harnesses skip git-ignored paths during file discovery — so an ignored ledger is one
+   Antigravity cannot see at all.
 3. `npm run sync:agents`, then `npm run doctor:agents`.
 4. Fix whatever the doctor names. In a project that already had agent tooling, expect one of:
    - **a skill name resolving to two definitions** — keep one; delete the other or make it a symlink;

@@ -3,11 +3,17 @@ node_modules/
 .env*.local
 .DS_Store
 
-# Review-loop scratch — captured diffs, regenerable, not source.
-# The ledger and its archive are deliberately NOT ignored: they are the loop's
-# recovery artifact, they must survive a fresh clone or worktree, and
-# Gemini-based harnesses skip git-ignored paths during file discovery.
-.roster/review/
+# Review-loop scratch — captured diffs, regenerable, but tracked on purpose.
+# `.roster/review/` is NOT ignored: reviewers are readonly (read, grep, glob,
+# no exec), so a reviewer handed a diff path it cannot open has no way to
+# reconstruct it, and Devin background subagents and Gemini-based harnesses
+# skip git-ignored paths during file discovery entirely — an ignored review
+# directory returns ### Blocked reports and costs a cycle. The capture command
+# in AGENTS.md step 4 excludes this directory from `git diff` so a tracked
+# review dir does not embed the previous cycle's diff into the next capture.
+# The ledger and its archive are tracked for the same recovery reason as before.
+#
+# (Left intentionally empty — no ignore rule for .roster/review/.)
 
 # Subagent-driven development scratch
 .superpowers/

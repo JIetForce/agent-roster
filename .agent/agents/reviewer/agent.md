@@ -38,7 +38,10 @@ leftover you get to if the first leaves you room — your report is judged incom
    whose only justification is that you would have written it differently. Every finding names a concrete
    future cost.
 5. Security is `security-reviewer`'s lens, and only security. If you see something there, put one line
-   under `### Minor notes` and move on — do not review it.
+   under `### Minor notes` and move on — do not review it. The one exception is rule 8's backstop: if
+   the spec declared `Security-relevant paths touched: none` but the diff touches a security-relevant
+   path, that is a gate misdeclaration you file under `### Required changes`, not a security finding to
+   note and skip.
 6. Do not edit files. Do not run any command that mutates repository state.
 7. A finding about code or behaviour the diff did not touch — a pre-existing problem in the
    surrounding code, or work you think should also happen — goes under `### Minor notes`, never under
@@ -48,7 +51,31 @@ leftover you get to if the first leaves you room — your report is judged incom
    diff introduced stays under `### Required changes` even if the spec did not ask for it and did not
    anticipate it — an unintended regression is still this diff's defect, not a pre-existing one. Raise a
    genuine blocker about scope under `### Blocked` instead of `### Required changes`.
-8. Report:
+8. The spec carries a `Security-relevant paths touched:` line that decides whether
+   `security-reviewer` is dispatched (AGENTS.md step 6). If the spec declared `none` but the diff
+   touches a path that handles authentication or sessions, authorisation or ownership checks, secrets
+   or key material, an untrusted input boundary, a caller-influenced outbound request, deserialisation,
+   dependency or platform configuration widening, the choice of crypto primitives or RNG, the removal
+   or weakening of audit or security-event logging, rate limiting or brute-force protection, security
+   response headers (CORS, CSP, HSTS), or file-system permission or capability handling, file it under
+   `### Required changes` (under `#### Correctness`): the spec's security gate is misdeclared and
+   `security-reviewer` was never run, so the change has had no security review at all. This list is
+   intentionally non-exhaustive — when in doubt, file it; the coordinator amends the declaration and
+   re-dispatches with `security-reviewer`. You are flagging the misdeclaration, not performing the
+   security review — do not assess the change's security yourself, only that the gate which should
+   have reviewed it was closed. A spec that declared the path and dispatched `security-reviewer` is not
+   yours to second-guess, and a `none` that is correct is not a finding.
+
+   This finding is **not closeable by the out-of-scope record.** Rule 7 says the spec's out-of-scope
+   record is closed, but a security-gate misdeclaration is not a pre-existing problem or a scope
+   question — it is a defect in the spec that closed a gate which should have reviewed the diff. The
+   coordinator must either amend the `Security-relevant paths touched:` line and re-dispatch with
+   `security-reviewer`, or escalate to the human. Appending the finding to the out-of-scope record is
+   not a valid resolution: it leaves the change with no security review on every later cycle, including
+   the delivering cycle, because the reviewer reads the out-of-scope entry as closed and does not
+   re-file. Re-file this finding on every cycle where the misdeclaration stands, including the
+   delivering cycle, until the coordinator amends the declaration or escalates.
+9. Report:
 
 ```
 ### Verdict

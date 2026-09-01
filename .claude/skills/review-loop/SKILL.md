@@ -23,7 +23,17 @@ working tree and escalates. The rest of `superpowers` is complementary.
    for a bounded chat spec a trailing "Already decided:" list you restate in the next dispatch. Empty
    at first: every time you overrule a reviewer's required change, append it there with one line of
    reasoning **before you re-dispatch** — reviewers are stateless, and a finding you overruled comes
-   back next cycle unless the spec says it was already decided.
+   back next cycle unless the spec says it was already decided. The spec also states a
+   `Security-relevant paths touched:` line — the paths, or `none` — which decides whether
+   `security-reviewer` is dispatched at all (step 6). Count as security-relevant anything handling
+   authentication or sessions, authorisation or ownership checks, secrets and key material, an
+   untrusted input boundary, a caller-influenced outbound request, deserialisation, dependency or
+   platform configuration widening, the choice of crypto primitives or RNG, the removal or weakening
+   of audit or security-event logging, rate limiting or brute-force protection, security response
+   headers (CORS, CSP, HSTS), or file-system permission or capability handling. This list is
+   intentionally non-exhaustive — when between yes and no, write the path down; a pure presentation
+   change is `none`. Re-confirm the declaration whenever the diff's scope grows (before the delivering
+   cycle) and amend it if it now understates the change.
 2. Open `.roster/ledger.md` — one active ledger, tracked in git. Resuming this change → read it and keep
    appending. A *different* change → `git mv` it into `.roster/archive/` first; never overwrite it.
 3. Dispatch `developer` with the spec. One writer at a time unless each has its own worktree. It does
@@ -31,14 +41,23 @@ working tree and escalates. The rest of `superpowers` is complementary.
 4. Capture the diff to a file — never inline:
    ```bash
    mkdir -p .roster/review
-   git add -N -- <the paths the developer touched>   # or `git add -N .`
-   git diff > .roster/review/cycle-<N>.diff
+   git add -N -- <the paths the developer touched>
+   git diff -- . ':(exclude).roster/review' > .roster/review/cycle-<N>.diff
    git status --porcelain >> .roster/review/cycle-<N>.diff
    ```
+   Do not use `git add -N .` — with `.roster/review/` tracked it marks every prior cycle's diff as
+   intent-to-add and widens what a later `git add -A` would commit. Scope intent-to-add to the paths
+   the developer touched. The `:(exclude).roster/review` is required: `.roster/review/` is tracked so reviewers can read it,
+   which means it is visible to `git diff` — without the exclude the capture embeds the previous cycle's
+   diff into the next one. `.roster/review/` **must not be git-ignored** in the consuming repo —
+   reviewers are `readonly` with no `exec`, and Devin background subagents and Gemini harnesses skip
+   ignored paths; an unreadable diff returns `### Blocked` reports and costs a cycle.
    No `diff --git` line in it? **Stop.** Reviewers approving an empty file look exactly like reviewers
    approving good work. Either the developer committed (recapture from the pre-dispatch SHA) or it changed
    nothing (that is a `### Blocked` it did not file).
-5. Dispatch `verifier` alone.
+5. Dispatch `verifier` alone. A `fail` because a spec-required suite was `not run` is the
+   coordinator's, not the developer's — run it, amend the spec's verification, or escalate; the
+   step 7 precondition enforces this before any exit is evaluated.
 6. Dispatch the applicable reviewers **in parallel**, each with the spec and the diff **path**.
    Cycle 1 → every applicable reviewer (`reviewer` always; `security-reviewer` when the spec's
    `Security-relevant paths touched` line is not `none`). Intermediate cycles (2+, non-delivering)
@@ -46,17 +65,38 @@ working tree and escalates. The rest of `superpowers` is complementary.
    cycle → overrides that: every applicable reviewer again, on the final state, regardless of what
    any previous reduced cycle dropped. **A reduced-fan-out cycle can never authorise delivery** — a
    clean reduced cycle is not a delivery; dispatch a fresh full-fan-out cycle and count those verdicts.
+   **The security gate has a backstop:** if the spec declared `none` but the diff touches a
+   security-relevant path, the `reviewer` files that as a `### Required changes` finding (not a note) —
+   a defect in the spec you must fix (amend the `Security-relevant paths touched:` line and re-dispatch
+   with `security-reviewer`) before delivery. The `reviewer` flags the misdeclaration; it does not
+   perform the security review. **This finding is not closeable by the out-of-scope record** — a gate
+   misdeclaration is a defect in the spec, not a decision you overrule. The only valid resolutions are
+   to amend the declaration and dispatch `security-reviewer`, or to escalate to the human; appending it
+   to the out-of-scope record leaves the change with no security review on every later cycle, including
+   the delivering cycle. The reviewer re-files it on every cycle where the misdeclaration stands.
 7. Append the cycle block to the ledger, then decide. Four exits, mutually exclusive and jointly
    exhaustive — the discriminator for each is the cycle's fan-out, the reviewers' verdicts, and the
    verifier's verdict. "Every reviewer approved" below means no `### Required changes` were filed —
    `approved_with_notes` counts as approved.
+
+   **Precondition — the `not run` case.** Before evaluating the exits, check whether the verifier's
+   `fail` (if any) was caused by a spec-required suite being `not run` rather than run-and-failed.
+   That case is the coordinator's (step 5): run the suite, amend the spec's "how it is verified" and
+   record it in the ledger, or escalate — and only then evaluate the exits. The exits below assume
+   the verifier's `fail`, when present, came from a suite it ran and that failed; a `not run` never
+   reaches them. This is the single place the `not run` case is handled — a `not run` with no
+   findings, with all findings overruled, or with findings remaining all resolve here and nowhere
+   else (not exit (3), not exit (4)).
    - **(1) Delivery** — full-fan-out, every applicable reviewer approved, and the verifier passed →
      append the delivery line, `mv` the ledger into `.roster/archive/` (plain `mv` — `git mv` fails
      on a file this run never committed), then **you** deliver it in **one** commit: `git add --
-     <paths> .roster` first, then `git commit -m "<msg>" -- <paths> .roster`. Both commands, in that
-     order — `git commit -- <paths>` only commits paths git already tracks, so a new file is omitted
-     in silence (or, if nothing tracked matches, git aborts); the `git add` puts the archived ledger
-     on that list. (`-m` goes before `--`; everything after `--` is read as a path.) Then summarise.
+     <paths> .roster/archive` first, then `git commit -m "<msg>" -- <paths> .roster/archive`. Both
+     commands, in that order — stage `.roster/archive` specifically, not `.roster`, because the
+     review directory is tracked now and captured diffs are scratch that does not belong in the
+     delivery commit. `git commit -- <paths>` only commits paths git already tracks, so a new file is
+     omitted in silence (or, if nothing tracked matches, git aborts); the `git add` puts the archived
+     ledger on that list. (`-m` goes before `--`; everything after `--` is read as a path.) Then
+     summarise.
    - **(2) Clean-reduced upgrade** — the cycle was reduced, every applicable reviewer approved (no
      `### Required changes` filed), and the verifier passed → do not dispatch the developer;
      re-dispatch every applicable reviewer on the same unchanged tree as a fresh full-fan-out cycle,
@@ -72,8 +112,8 @@ working tree and escalates. The rest of `superpowers` is complementary.
      re-review an unchanged tree, this re-reviews a tree the developer has just changed. A failing
      build or test suite is work even when no reviewer filed anything; re-dispatching reviewers on
      an unchanged tree that still fails the verifier cannot converge. This covers a suite the
-     verifier ran that failed; it is distinct from the case where a spec-required suite was
-     `not run` (the coordinator's, not the developer's).
+     verifier ran that failed; a `not run` is intercepted by the precondition above before this
+     exit is evaluated.
    - **(4) Required changes filed** — at least one `### Required changes` item was filed → merge
      them; any you are not passing to the developer is one you overruled, so append it to the spec's
      out-of-scope record with one line of reasoning **before** re-dispatch (step 1). If every

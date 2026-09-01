@@ -280,8 +280,8 @@ deleting by hand.
 - [ ] **Step 8: Commit (coordinator, after all verdicts)**
 
 ```bash
-git add -- agents/roles config/agents.json tests AGENTS.md README.md agents/skills .agent .claude .codex .cursor .devin .roster
-git commit -m "refactor(agents): merge code-reviewer and quality-reviewer into one reviewer with structural dual coverage" -- agents/roles config/agents.json tests AGENTS.md README.md agents/skills .agent .claude .codex .cursor .devin .roster
+git add -- agents/roles config/agents.json tests AGENTS.md README.md agents/skills .agent .claude .codex .cursor .devin .roster/archive
+git commit -m "refactor(agents): merge code-reviewer and quality-reviewer into one reviewer with structural dual coverage" -- agents/roles config/agents.json tests AGENTS.md README.md agents/skills .agent .claude .codex .cursor .devin .roster/archive
 ```
 
 ---
@@ -375,8 +375,8 @@ Expected: PASS.
 - [ ] **Step 6: Commit (coordinator, after all verdicts)**
 
 ```bash
-git add -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster
-git commit -m "feat(loop): reduce reviewer fan-out between cycles and bind findings to the spec's scope" -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster
+git add -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster/archive
+git commit -m "feat(loop): reduce reviewer fan-out between cycles and bind findings to the spec's scope" -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster/archive
 ```
 
 ---
@@ -429,8 +429,8 @@ Expected: PASS.
 - [ ] **Step 4: Commit (coordinator, after all verdicts)**
 
 ```bash
-git add -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster
-git commit -m "feat(loop): gate security-reviewer on a per-spec declaration of security-relevant paths" -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster
+git add -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster/archive
+git commit -m "feat(loop): gate security-reviewer on a per-spec declaration of security-relevant paths" -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster/archive
 ```
 
 ---
@@ -487,8 +487,8 @@ Expected: PASS.
 - [ ] **Step 4: Commit (coordinator, after all verdicts)**
 
 ```bash
-git add -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster
-git commit -m "fix(verifier): a spec-required suite that did not run is a fail, not a pass" -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster
+git add -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster/archive
+git commit -m "fix(verifier): a spec-required suite that did not run is a fail, not a pass" -- AGENTS.md agents .agent .claude .codex .cursor .devin .roster/archive
 ```
 
 ---
@@ -539,7 +539,7 @@ capture embeds them. Narrow the capture command in `AGENTS.md` step 4 and in the
 
 ```bash
 mkdir -p .roster/review
-git add -N -- <the paths the developer touched>   # or `git add -N .`
+git add -N -- <the paths the developer touched>
 git diff -- . ':(exclude).roster/review' > .roster/review/cycle-<N>.diff
 git status --porcelain >> .roster/review/cycle-<N>.diff
 ```
@@ -587,8 +587,8 @@ consumers. Append to `docs/porting/2026-09-01-port-to-next-auth.md` a line stati
 - [ ] **Step 6: Commit (coordinator, after all verdicts)**
 
 ```bash
-git add -- AGENTS.md agents docs .agent .claude .codex .cursor .devin .roster
-git commit -m "fix(loop): stop handing reviewers a git-ignored diff path they cannot open" -- AGENTS.md agents docs .agent .claude .codex .cursor .devin .roster
+git add -- AGENTS.md agents docs .agent .claude .codex .cursor .devin .roster/archive
+git commit -m "fix(loop): stop handing reviewers a git-ignored diff path they cannot open" -- AGENTS.md agents docs .agent .claude .codex .cursor .devin .roster/archive
 ```
 
 ---

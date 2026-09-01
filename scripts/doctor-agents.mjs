@@ -156,13 +156,32 @@ if (hasGit) {
   report(
     !ignored(".roster/ledger.md"),
     ignored(".roster/ledger.md")
-      ? ".roster/ledger.md is git-ignored — it must be tracked (ignore .roster/review/ instead)"
+      ? ".roster/ledger.md is git-ignored — it must be tracked (it is the loop's recovery artifact)"
       : active
         ? ".roster/ledger.md is tracked (survives a reset, visible to Gemini-based harnesses)"
         : "no active ledger, and .roster/ledger.md is not ignored — the next one will be tracked",
   );
-  if (!ignored(".roster/review/")) {
-    console.log("  warn .roster/review/ is not ignored — captured diffs are scratch, not source");
+  // `.roster/review/` must be tracked, not ignored (AGENTS.md step 4). Reviewers
+  // are readonly (read, grep, glob, no exec), so a reviewer handed a diff path
+  // it cannot open has no way to reconstruct the diff — and Devin background
+  // subagents and Gemini-based harnesses skip git-ignored paths during file
+  // discovery entirely, returning ### Blocked reports that cost a cycle. This
+  // is the same must-be-tracked requirement as the ledger above, so it fails
+  // the doctor rather than warning softly.
+  if (ignored(".roster/review/")) {
+    report(
+      false,
+      ".roster/review/ is git-ignored — it must be tracked (AGENTS.md step 4). " +
+        "Devin background subagents and Gemini-based harnesses skip git-ignored " +
+        "paths during file discovery, and readonly reviewers have no exec " +
+        "fallback to reconstruct the captured diff, so an ignored review " +
+        "directory returns ### Blocked reports and costs a cycle.",
+    );
+  } else {
+    report(
+      true,
+      ".roster/review/ is tracked (readonly reviewers can read captured diffs)",
+    );
   }
   if (active) {
     console.log(
