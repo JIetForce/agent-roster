@@ -165,7 +165,11 @@ devin --model glm-5-2 -p 'Call run_subagent with profile="code-reviewer", is_bac
 ```
 
 Expect SWE-1.7 and exactly `find_file_by_name`, `grep`, `read`. Repeat with
-`profile="researcher"` and expect GLM-5.2 with the same three tools. If a probe reports the parent
+`profile="researcher"` and expect GLM-5.2 with the same three tools.
+
+> **2026-09-02:** `code-reviewer` and `quality-reviewer` were merged into a single `reviewer`, which
+> carries the `swe-1-7` pin. Run the probe above with `profile="reviewer"`; `profile="code-reviewer"`
+> no longer resolves. The expectation is otherwise unchanged. If a probe reports the parent
 session's model instead, the profile is not binding and the port is incomplete.
 
 Then confirm the ledger lifecycle on the port's own delivery: **one** commit, containing the
@@ -193,7 +197,10 @@ Recorded in `agent-roster`'s archived ledgers, still open in both repositories:
   verifier that regained it is caught only by its absence from the allowlist.
 - `scripts/lib/devin-models.mjs` — the `Free` match is case-sensitive. A catalogue printing `free`
   would produce a spurious "no longer free" warning. Warning only; it cannot fail the doctor.
-- Three parallel reviewers exhaust the Devin free-tier quota at the account level — both free model
+- Parallel reviewers exhaust the Devin free-tier quota at the account level — both free model
   families fail together. Dispatch them sequentially with retries, and check each report for a
   `### Verdict` rather than trusting the exit code: a quota-exhausted run exits 0 and writes an
-  error body where the verdict should be.
+  error body where the verdict should be. (2026-09-02: the merge to a single `reviewer` takes the
+  concurrent readers from three to two, which reduces this but does not remove it. Observed again
+  during that work: two concurrent `devin -p` reviewers on a 106 KB diff exceeded a ten-minute
+  budget and one returned an empty file — the `### Verdict` check is what caught it.)
