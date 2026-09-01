@@ -50,13 +50,16 @@ for (const { meta, body } of roles) {
 /* --- security invariants, by capability class --- */
 
 // Markers are checked against each tool's write-*grant* field only, never
-// against the whole file. Devin's `permissions.deny` and Claude's
-// `disallowedTools` spell out these exact words ("write", "edit", ...) to
-// deny them — a whole-file substring search would flag a role for the very
-// text that proves it cannot act. Scoping to the grant field (the `tools:`
-// line for Claude, the `allowed-tools:` block for Devin) keeps the assertion
-// meaningful instead of weakening it. Antigravity/Cursor/Codex have no such
-// deny-list echo, so their markers are checked against the whole file.
+// against the whole file. Claude's `disallowedTools` spells out these exact
+// words ("Write", "Edit", ...) to deny them — a whole-file substring search
+// would flag a role for the very text that proves it cannot act. Scoping to
+// the grant field (the `tools:` line for Claude, the `allowed-tools:` block
+// for Devin) keeps the assertion meaningful instead of weakening it.
+// Devin has no deny-list to echo: it ignores a `permissions` key in a subagent
+// profile (CFG005) and enforces `allowed-tools` alone, which is why that
+// allowlist is the only field worth reading here.
+// Antigravity/Cursor/Codex have no such echo either, so their markers are
+// checked against the whole file.
 const GRANT_FIELD = {
   claude: (text) => text.match(/^tools:.*$/m)?.[0] ?? "",
   devin: (text) => text.match(/^allowed-tools:\n(?:  - .*\n)*/m)?.[0] ?? "",

@@ -98,12 +98,10 @@ const renderers = {
     if (cfg["allowed-tools"]) {
       fm += `allowed-tools:\n${yamlBlockList(cfg["allowed-tools"])}\n`;
     }
-    if (cfg.permissions) {
-      fm += "permissions:\n";
-      for (const [k, v] of Object.entries(cfg.permissions)) {
-        fm += `  ${k}:\n${v.map((i) => `    - ${i}`).join("\n")}\n`;
-      }
-    }
+    // No `permissions` block here, deliberately. Devin reports
+    // `CFG005: unsupported frontmatter key(s) ignored: permissions` and drops
+    // it; it enforces `allowed-tools` alone, so emitting `permissions` would
+    // write a control that does not exist on this harness.
     return `---\n${fm}---\n\n${MD_BANNER}\n\n${body}\n`;
   },
 

@@ -726,10 +726,19 @@ Replace the first bullet of `8. **Decide.**`:
      2. Archive it — `mkdir -p .roster/archive && mv .roster/ledger.md ".roster/archive/$(date +%F)-<slug>.md"`.
         Plain `mv`, **not** `git mv`: at this point the ledger has never been committed during this
         run, and `git mv` refuses an untracked file (`fatal: not under version control`).
-     3. Commit, with an explicit pathspec covering the source paths plus `.roster` — safe as a whole
-        directory, because `.roster/review/` is git-ignored and the archived ledger is the only new
-        file under it. On the architectural path, use the pathspec the plan's task specifies — one
-        `git commit -m "<message>" -- <paths>`, which stages and commits in a single step.
+     3. Stage, then commit — **two commands, not one**:
+
+        ```bash
+        git add -- <source paths> .roster
+        git commit -m "<message>" -- <source paths> .roster
+        ```
+
+        `.roster` is safe as a whole directory: `.roster/review/` is git-ignored, so the archived
+        ledger is the only thing under it that can be staged. The `git add` is not optional and
+        this order is not stylistic — `git commit -- <paths>` commits only paths git already
+        tracks, and under this ordering the archived ledger is always a **new** file, so a commit
+        without the add fails with `pathspec ... did not match any file(s) known to git` and
+        delivers nothing. On the architectural path, use the paths the plan's task specifies.
 
      One commit per run of this loop, not one per cycle and not one per artefact. Committing before
      the archive is what produced a second, content-free rename commit on every delivery: the ledger
@@ -745,8 +754,10 @@ In `agents/skills/review-loop/SKILL.md`, replace step 7's first sentence:
 ```markdown
 7. Append the cycle block to the ledger, then decide: all approved and verifier green → append the
    delivery line, `mv` the ledger into `.roster/archive/` (plain `mv` — `git mv` fails on a file this
-   run never committed), then **you** commit **once**, with an explicit pathspec covering the source
-   paths plus `.roster` (`git commit -m "<msg>" -- <paths>` — `-m` before `--`), and summarise.
+   run never committed), then **you** deliver it in **one** commit: `git add -- <paths> .roster`
+   first, then `git commit -m "<msg>" -- <paths> .roster`. Both commands, in that order — the
+   archived ledger is a new file, and `git commit` alone only knows paths git already tracks.
+   (`-m` goes before `--`; everything after `--` is read as a path.) Then summarise.
    Otherwise merge the required changes and return to step 3.
 ```
 

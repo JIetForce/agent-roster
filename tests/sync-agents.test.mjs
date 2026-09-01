@@ -109,13 +109,29 @@ describe("readonly roles keep the shape that makes them read-only", () => {
     }
   });
 
-  it("devin: denies write, edit and exec explicitly", () => {
+  it("devin: readonly roles grant exactly read, grep and glob", () => {
+    // `allowed-tools` is an allowlist and Devin enforces it: a subagent under a
+    // readonly profile is handed `find_file_by_name`, `grep`, `read` and nothing
+    // else. `permissions` is NOT enforced (CFG005: unsupported key), so this
+    // assertion deliberately reads the field that binds.
     for (const role of READONLY) {
       const f = readFileSync(`.devin/agents/${role}.md`, "utf8");
-      const deny = f.match(/^permissions:\n  deny:\n(?:    - .*\n)+/m)?.[0] ?? "";
-      for (const t of ["write", "edit", "exec"]) {
-        assert.ok(deny.includes(`- ${t}\n`), `${role}: devin profile does not deny ${t}`);
-      }
+      const grant = f.match(/^allowed-tools:\n(?:  - .*\n)*/m)?.[0] ?? "";
+      assert.equal(
+        grant,
+        "allowed-tools:\n  - read\n  - grep\n  - glob\n",
+        `${role}: devin allowlist is not exactly the read-only three`,
+      );
+    }
+  });
+
+  it("devin: no profile carries the unsupported permissions key", () => {
+    for (const role of ROLES) {
+      const f = readFileSync(`.devin/agents/${role}.md`, "utf8");
+      assert.ok(
+        !/^permissions:/m.test(f),
+        `${role}: devin ignores \`permissions\` (CFG005) — remove it from config/agents.json`,
+      );
     }
   });
 

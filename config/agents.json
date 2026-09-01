@@ -9,13 +9,11 @@
     "devin": {
       "readonly": {
         "model": "glm-5-2",
-        "allowed-tools": ["read", "grep", "glob"],
-        "permissions": { "deny": ["write", "edit", "notebook_edit", "exec"] }
+        "allowed-tools": ["read", "grep", "glob"]
       },
       "verifier": {
         "model": "glm-5-2",
-        "allowed-tools": ["read", "grep", "glob", "exec"],
-        "permissions": { "deny": ["write", "edit", "notebook_edit"] }
+        "allowed-tools": ["read", "grep", "glob", "exec"]
       },
       "implementer": {
         "model": "glm-5-2",
