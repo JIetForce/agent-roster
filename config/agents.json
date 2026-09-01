@@ -8,18 +8,21 @@
   "tools": {
     "devin": {
       "readonly": {
-        "model": "sonnet",
+        "model": "glm-5-2",
         "allowed-tools": ["read", "grep", "glob"],
         "permissions": { "deny": ["write", "edit", "notebook_edit", "exec"] }
       },
       "verifier": {
-        "model": "sonnet",
+        "model": "glm-5-2",
         "allowed-tools": ["read", "grep", "glob", "exec"],
         "permissions": { "deny": ["write", "edit", "notebook_edit"] }
       },
       "implementer": {
-        "model": "sonnet",
+        "model": "glm-5-2",
         "allowed-tools": ["read", "grep", "glob", "exec", "edit", "write"]
+      },
+      "role_overrides": {
+        "code-reviewer": { "model": "swe-1-7" }
       }
     },
     "antigravity": {

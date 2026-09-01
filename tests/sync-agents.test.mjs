@@ -156,3 +156,54 @@ describe("harness skill projection", () => {
     }
   });
 });
+
+describe("per-role model overrides", () => {
+  it("devin: code-reviewer is pinned to swe-1-7, every other role to glm-5-2", () => {
+    const modelOf = (role) =>
+      readFileSync(`.devin/agents/${role}.md`, "utf8").match(/^model: (.+)$/m)?.[1];
+
+    assert.equal(modelOf("code-reviewer"), "swe-1-7");
+    for (const role of ROLES.filter((r) => r !== "code-reviewer")) {
+      assert.equal(modelOf(role), "glm-5-2", `${role}: expected the primary model`);
+    }
+  });
+
+  it("an override refines its class without dropping the class's other keys", () => {
+    // code-reviewer is `readonly`: the override changes the model only, so the
+    // class's tool allowlist must survive the merge intact.
+    const f = readFileSync(".devin/agents/code-reviewer.md", "utf8");
+    assert.match(f, /^allowed-tools:\n  - read\n  - grep\n  - glob\n/m);
+  });
+
+  it("claude profiles are untouched by devin's overrides", () => {
+    for (const role of ROLES) {
+      assert.match(
+        readFileSync(`.claude/agents/${role}.md`, "utf8"),
+        /^model: sonnet$/m,
+        `${role}: claude profile lost its model`,
+      );
+    }
+  });
+
+  it("rejects an override for a role that does not exist", () => {
+    const original = readFileSync("config/agents.json", "utf8");
+    const cfg = JSON.parse(original);
+    cfg.tools.devin.role_overrides = { "no-such-role": { model: "glm-5-2" } };
+    writeFileSync("config/agents.json", JSON.stringify(cfg, null, 2) + "\n");
+    try {
+      // execFileSync throws an Error whose *message* is only "Command failed";
+      // the generator's own text lands on stderr, so assert against that.
+      let err;
+      try {
+        run(["scripts/sync-agents.mjs"]);
+      } catch (e) {
+        err = e;
+      }
+      assert.ok(err, "sync accepted an override naming a role that does not exist");
+      assert.match(String(err.stderr ?? err.message), /no-such-role/);
+    } finally {
+      writeFileSync("config/agents.json", original);
+      run(["scripts/sync-agents.mjs"]);
+    }
+  });
+});

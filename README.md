@@ -93,6 +93,16 @@ A role declares a **capability class**, not per-harness settings. `config/agents
 every harness's own permission vocabulary once, so adding a role costs one file instead of five config
 blocks.
 
+The class is what grants permissions. Where one role genuinely needs a different *setting* — not
+different permissions — `tools.<harness>.role_overrides.<role>` refines it. Today that is one entry:
+`code-reviewer` runs a different model family from the `developer` whose diff it reads, so the widest
+review lens does not share the author's blind spots.
+
+Devin roles run free models during a promotion that **ends 2026-09-16**: `glm-5-2` (GLM-5.2 High)
+everywhere, `swe-1-7` (SWE-1.7 Max) for `code-reviewer`. Two traps worth naming: `swe-1-7-medium` is
+also free and is deliberately unused, and the bare alias `swe` is *not* free — it resolves to
+SWE-1.7 Lightning. The expiry is recorded here deliberately, because nothing enforces it yet — Task 4 of the roster's own plan will teach `npm run doctor:agents` to re-check both facts against the installed CLI.
+
 ## The loop
 
 Research fans out in parallel → one writer → the verifier alone → three reviewers in parallel → decide.

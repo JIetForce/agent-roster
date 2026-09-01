@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: 'Read-only code reviewer. Analyses a diff for correctness, security, architecture and regressions. Never edits.'
-model: sonnet
+model: swe-1-7
 allowed-tools:
   - read
   - grep
