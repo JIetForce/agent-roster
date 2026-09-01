@@ -124,9 +124,11 @@ this section is the instruction: you have now read it, so you know not to invoke
 4. **Capture the diff.**
    ```bash
    mkdir -p .roster/review
+   git add -N -- <the paths the developer touched>   # or `git add -N .`
    git diff > .roster/review/cycle-<N>.diff
    git status --porcelain >> .roster/review/cycle-<N>.diff
    ```
+   `git add -N` records intent-to-add so a new file appears in `git diff` as a full addition. Without it the capture silently omits every file the change created, which is the same failure as an empty diff and harder to notice.
    Use `git diff HEAD` instead if the developer staged its work. `<N>` is the review cycle, starting at 1.
 
    **An empty diff stops the loop.** If the captured file contains no `diff --git` line, do not dispatch the
@@ -159,10 +161,34 @@ this section is the instruction: you have now read it, so you know not to invoke
    ```
 
 8. **Decide.**
-   - Every verdict `approved` or `approved_with_notes`, and the verifier passed → **you commit the work**,
-     with an explicit pathspec. One commit per run of this loop, not one per cycle; on the architectural path,
-     use the `git add` scope the plan's task specifies. Then append the delivery line to the ledger, archive
-     it as in step 2 so the next change opens a clean one, and summarise for the user. Done.
+   - Every verdict `approved` or `approved_with_notes`, and the verifier passed → close the change
+     in this order, which is **one** commit, not two:
+     1. Append the delivery line to the ledger.
+     2. Archive it — `mkdir -p .roster/archive && mv .roster/ledger.md ".roster/archive/$(date +%F)-<slug>.md"`.
+        Plain `mv`, **not** `git mv`: at this point the ledger has never been committed during this
+        run, and `git mv` refuses an untracked file (`fatal: not under version control`).
+     3. Stage, then commit — **two commands, not one**:
+
+        ```bash
+        git add -- <source paths> .roster
+        git commit -m "<message>" -- <source paths> .roster
+        ```
+
+        `.roster` is safe as a whole directory: `.roster/review/` is git-ignored, so the archived
+        ledger is the only thing under it that can be staged. The `git add` is not optional and
+        this order is not stylistic — `git commit -- <paths>` only ever commits paths git already
+        tracks, and under this ordering the archived ledger is always a **new** file. When the
+        pathspec matches nothing tracked git aborts with `pathspec ... did not match any file(s)
+        known to git`; when it matches something tracked — the normal case here, since `.roster`
+        always matches earlier archives — git exits 0 and silently omits the new file, so the
+        commit looks complete but contains no ledger. On the architectural path, use the paths
+        the plan's task specifies.
+
+     One commit per run of this loop, not one per cycle and not one per artefact. Committing before
+     the archive is what produced a second, content-free rename commit on every delivery: the ledger
+     got swept into the feature commit just so `git mv` had something tracked to move.
+
+     Then summarise for the user. Done.
    - Otherwise → merge all `### Required changes` into one list, hand it to `developer`, and go to
      step 3 with `<N>+1`.
 
