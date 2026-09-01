@@ -17,7 +17,7 @@ point it quietly becomes a bug:
 | `.cursor/agents/*.md` | ✗ | ✗ | ✗ | ✓ | ✗ |
 | `.codex/agents/*.toml` | ✗ | ✗ | ✗ | ✓ (compat) | ✓ |
 
-Devin is fed by four of those paths; Cursor by three. Write the same `code-reviewer` into each vendor's
+Devin is fed by four of those paths; Cursor by three. Write the same `reviewer` into each vendor's
 directory the obvious way and Devin discovers three of them — one restricted to Devin's tools, one to
 Antigravity tools that do not exist in Devin, one to Claude's. They do not merge. One wins, arbitrarily.
 
@@ -32,10 +32,10 @@ harness reads and which therefore hides a duplicate where nothing will report it
 
 ## What you get
 
-- **Six roles** with a single source of truth in `agents/roles/<role>/role.md`.
+- **Five roles** with a single source of truth in `agents/roles/<role>/role.md`.
 - **A contract** in `AGENTS.md`: how work is dispatched, what may run in parallel, how a worker escalates a
   blocking question, and when the review loop stops.
-- **A generator** — `npm run sync:agents` — that writes 35 files and owns every one of them through a
+- **A generator** — `npm run sync:agents` — that writes 30 files and owns every one of them through a
   manifest, so it never deletes a file it did not write.
 - **A validator and a doctor** that fail on drift, on a collision, and on a read-only role that gained the
   ability to act.
@@ -83,11 +83,10 @@ becomes the coordinator, and dispatches the roles.
 | `developer` | `implementer` | Implements a spec, writes tests, runs lint and tests |
 | `verifier` | `verifier` | Runs the build, lint, suite and end-to-end checks; reports evidence, never edits |
 | `researcher` | `readonly` | Answers one scoped question with `file:line` citations |
-| `code-reviewer` | `readonly` | Correctness, regressions, spec fidelity, test coverage |
+| `reviewer` | `readonly` | Correctness, regressions, spec fidelity, test coverage; maintainability, consistency, duplication, dead code |
 | `security-reviewer` | `readonly` | Authn/authz, injection, secrets, SSRF, unsafe deserialisation |
-| `quality-reviewer` | `readonly` | Maintainability, consistency, duplication, dead code |
 
-The three review lenses have deliberately disjoint remits, so one defect draws one finding rather than three.
+The two review roles have deliberately disjoint remits, so one defect draws one finding rather than two.
 
 A role declares a **capability class**, not per-harness settings. `config/agents.json` maps each class to
 every harness's own permission vocabulary once, so adding a role costs one file instead of five config
@@ -95,17 +94,17 @@ blocks.
 
 The class is what grants permissions. Where one role genuinely needs a different *setting* — not
 different permissions — `tools.<harness>.role_overrides.<role>` refines it. Today that is one entry:
-`code-reviewer` runs a different model family from the `developer` whose diff it reads, so the widest
+`reviewer` runs a different model family from the `developer` whose diff it reads, so the widest
 review lens does not share the author's blind spots.
 
 Devin roles run free models during a promotion that **ends 2026-09-16**: `glm-5-2` (GLM-5.2 High)
-everywhere, `swe-1-7` (SWE-1.7 Max) for `code-reviewer`. Two traps worth naming: `swe-1-7-medium` is
+everywhere, `swe-1-7` (SWE-1.7 Max) for `reviewer`. Two traps worth naming: `swe-1-7-medium` is
 also free and is deliberately unused, and the bare alias `swe` is *not* free — it resolves to
 SWE-1.7 Lightning. `npm run doctor:agents` re-checks both facts against the installed CLI: it fails on a slug that no longer exists and warns on one that is no longer free, so the expiry reports itself rather than resting on this paragraph.
 
 ## The loop
 
-Research fans out in parallel → one writer → the verifier alone → three reviewers in parallel → decide.
+Research fans out in parallel → one writer → the verifier alone → both reviewers in parallel → decide.
 
 It keeps iterating while the outstanding-findings list is shrinking, and stops on a **stall** (two cycles
 with no shrinkage), on a blocking question the coordinator cannot resolve from the repository, or on a
@@ -117,8 +116,8 @@ and a new worktree. There is exactly one active ledger; delivering a change arch
 `.roster/archive/` rather than leaving it for the next change to overwrite.
 
 The review artefact is the **uncommitted working tree**, not a commit range. The developer does not commit;
-the coordinator does, once, after every verdict is in. An empty captured diff stops the loop — three
-`approved` verdicts on an empty file look exactly like three on a good change.
+the coordinator does, once, after every verdict is in. An empty captured diff stops the loop — the
+reviewers' `approved` verdicts on an empty file look exactly like the same verdicts on a good change.
 
 ## Parallelism, and its one real limit
 
@@ -172,8 +171,8 @@ Then `npm run sync:agents`. No per-harness edits.
 Every claim in the discovery matrix was checked against vendor documentation or a local installation.
 
 **Devin's profile behaviour is verified empirically**, against CLI 3000.6.7 on 2026-09-01, not
-from documentation: `devin doctor` reports the six profiles loaded, `run_subagent`'s `profile`
-parameter is an enum containing all six role names, `model:` binds (a subagent dispatched under a
+from documentation: `devin doctor` reports the five profiles loaded, `run_subagent`'s `profile`
+parameter is an enum containing all five role names, `model:` binds (a subagent dispatched under a
 profile reports that profile's model, not the parent session's), `allowed-tools:` is enforced (a
 readonly role is handed exactly `find_file_by_name`, `grep`, `read`), and `permissions:` is ignored
 outright. A profile with no `model:` key does not inherit the session model — it falls to Devin's

@@ -39,7 +39,7 @@ describe("harness generation", () => {
 
   it("detects a hand-edit as drift", () => {
     run(["scripts/sync-agents.mjs"]);
-    const path = ".claude/agents/code-reviewer.md";
+    const path = ".claude/agents/reviewer.md";
     const original = readFileSync(path, "utf8");
     try {
       writeFileSync(path, original + "\nhand edited\n");
@@ -189,27 +189,40 @@ describe("harness skill projection", () => {
     );
     assert.match(
       text,
-      /the researcher and the three reviewers run with `is_background: true`/,
-      "dispatch line does not put the readers (researcher, three reviewers) in the background",
+      /the researcher and both reviewers run with `is_background: true`/,
+      "dispatch line does not put the readers (researcher, both reviewers) in the background",
+    );
+  });
+});
+
+describe("the merged reviewer keeps both lenses structural", () => {
+  it("requires a Correctness and a Maintainability subsection", () => {
+    const role = readFileSync("agents/roles/reviewer/role.md", "utf8");
+    assert.match(role, /^#### Correctness$/m, "reviewer lost its correctness subsection");
+    assert.match(role, /^#### Maintainability$/m, "reviewer lost its maintainability subsection");
+    assert.match(
+      role,
+      /omits either subsection is incomplete/,
+      "reviewer does not state that a report missing a lens is incomplete",
     );
   });
 });
 
 describe("per-role model overrides", () => {
-  it("devin: code-reviewer is pinned to swe-1-7, every other role to glm-5-2", () => {
+  it("devin: reviewer is pinned to swe-1-7, every other role to glm-5-2", () => {
     const modelOf = (role) =>
       readFileSync(`.devin/agents/${role}.md`, "utf8").match(/^model: (.+)$/m)?.[1];
 
-    assert.equal(modelOf("code-reviewer"), "swe-1-7");
-    for (const role of ROLES.filter((r) => r !== "code-reviewer")) {
+    assert.equal(modelOf("reviewer"), "swe-1-7");
+    for (const role of ROLES.filter((r) => r !== "reviewer")) {
       assert.equal(modelOf(role), "glm-5-2", `${role}: expected the primary model`);
     }
   });
 
   it("an override refines its class without dropping the class's other keys", () => {
-    // code-reviewer is `readonly`: the override changes the model only, so the
+    // reviewer is `readonly`: the override changes the model only, so the
     // class's tool allowlist must survive the merge intact.
-    const f = readFileSync(".devin/agents/code-reviewer.md", "utf8");
+    const f = readFileSync(".devin/agents/reviewer.md", "utf8");
     assert.match(f, /^allowed-tools:\n  - read\n  - grep\n  - glob\n/m);
   });
 

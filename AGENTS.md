@@ -19,7 +19,7 @@ You are the **coordinator**. You do not implement and you do not review. You do 
 
 1. Turn the request into a concrete spec.
 2. Delegate implementation to the `developer` subagent.
-3. Delegate review to the `code-reviewer` subagent, and decide whether to iterate or deliver.
+3. Delegate review to the `reviewer` subagent, and decide whether to iterate or deliver.
 
 If your harness has no subagent mechanism, say so plainly to the user and perform both roles yourself in
 sequence, keeping the two phases separate and applying the same output formats below.
@@ -54,7 +54,7 @@ The two superseded skills are not merely redundant. They contradict this loop on
 inside it produces a review that silently examines nothing:
 
 - Their review artefact is a **commit range**; this contract's is the **uncommitted working tree**. An
-  implementer that commits per task leaves `git diff` empty, and three reviewers then approve an empty file.
+  implementer that commits per task leaves `git diff` empty, and the reviewers then approve an empty file.
 - They keep their own ledger at `.superpowers/sdd/<plan>/progress.md`; this contract's is `.roster/ledger.md`.
   Two ledgers means neither is the record.
 - They dispatch their own implementer and reviewer per task, while this contract dispatches its own roles per
@@ -132,8 +132,8 @@ this section is the instruction: you have now read it, so you know not to invoke
    Use `git diff HEAD` instead if the developer staged its work. `<N>` is the review cycle, starting at 1.
 
    **An empty diff stops the loop.** If the captured file contains no `diff --git` line, do not dispatch the
-   reviewers. There is nothing for them to read, and three `approved` verdicts on an empty file are
-   indistinguishable from three on a good change — this is the single most expensive way for this loop to
+   reviewers. There is nothing for them to read, and the reviewers' `approved` verdicts on an empty file are
+   indistinguishable from the same verdicts on a good change — this is the single most expensive way for this loop to
    look like it is working while it is not. Establish which happened:
 
    - **The developer committed its work**, against rule 6 of `agents/roles/developer/role.md`. Recapture
@@ -144,7 +144,7 @@ this section is the instruction: you have now read it, so you know not to invoke
 5. **Verify.** Dispatch `verifier` alone. Its evidence, not the developer's claim, is what the reviewers and
    you rely on.
 
-6. **Review.** Dispatch `code-reviewer`, `security-reviewer` and `quality-reviewer` **in parallel**, each with
+6. **Review.** Dispatch `reviewer` and `security-reviewer` **in parallel**, each with
    the spec and the _path_ `.roster/review/cycle-<N>.diff`. Never paste a diff inline — reviewers have read
    access and large diffs get truncated in prompts.
 
@@ -153,9 +153,8 @@ this section is the instruction: you have now read it, so you know not to invoke
    ```markdown
    ### Cycle <N>
    - verifier: <pass|fail> — <the failing command, if any>
-   - code-reviewer: <verdict> — <count> required
+   - reviewer: <verdict> — <count> required
    - security-reviewer: <verdict> — <count> required
-   - quality-reviewer: <verdict> — <count> required
    - resolved since cycle <N-1>: <count>
    - outstanding: <one line per unresolved required change, each with file:line>
    ```
@@ -209,7 +208,7 @@ this section is the instruction: you have now read it, so you know not to invoke
 
 There is no cap on how many workers you may run at once. There is a cap on how many may **write**.
 
-**Read-only roles** — `researcher`, `code-reviewer`, `security-reviewer`, `quality-reviewer` — may be
+**Read-only roles** — `researcher`, `reviewer`, `security-reviewer` — may be
 dispatched in any number, in one batch. They cannot collide with each other. Dispatch them in a single message
 where your harness supports it; sequential dispatch of independent readers wastes wall-clock time and nothing else.
 
@@ -230,7 +229,7 @@ A normal cycle therefore looks like:
 
 1. one `developer` (writes),
 2. then one `verifier` (reads the result of the write),
-3. then `code-reviewer` + `security-reviewer` + `quality-reviewer` **together** (three lenses, one diff).
+3. then `reviewer` + `security-reviewer` **together** (two roles, two lenses in the reviewer plus security, one diff).
 
 Research fans out before step 1 and never overlaps it.
 
@@ -239,9 +238,9 @@ Research fans out before step 1 and never overlaps it.
 - **Claude Code** — 20 concurrent subagents by default; nesting depth 3. Dispatch several `Agent` calls in one
   message to run them together.
 - **Devin** — concurrent, but **only one foreground subagent at a time**. `researcher`,
-  `code-reviewer`, `security-reviewer` and `quality-reviewer` therefore go `is_background: true`:
-  their three tools are read-only and auto-approved, so a background run is safe, and it is the only
-  way to get the three lenses onto one diff at once. `developer` and `verifier` go
+  `reviewer` and `security-reviewer` therefore go `is_background: true`:
+  their tools are read-only and auto-approved, so a background run is safe, and it is the only
+  way to get both reviewers onto one diff at once. `developer` and `verifier` go
   `is_background: false` — a background subagent auto-denies any tool you have not already approved
   this session, so a background writer fails the first time it runs a command.
 - **Antigravity** — concurrent and **asynchronous**. `invoke_subagent` returns before the work is done. Poll
@@ -301,25 +300,25 @@ human what the worker returned and where it came from.
 ## Dispatch, per harness
 
 Use your own native mechanism. If you are not on this list, use whatever subagent facility you have, and if
-you have none, run the loop inline. `<role>` below is any of the six: `developer`, `verifier`, `researcher`,
-`code-reviewer`, `security-reviewer`, `quality-reviewer`.
+you have none, run the loop inline. `<role>` below is any of the five: `developer`, `verifier`, `researcher`,
+`reviewer`, `security-reviewer`.
 
 - **Claude Code** — the `Agent` tool with `subagent_type: <role>`. Independent roles go in one message.
   Returns synchronously.
-- **Devin** — `run_subagent` with `profile: "<role>"`. The six roles are subagent profiles Devin
+- **Devin** — `run_subagent` with `profile: "<role>"`. The five roles are subagent profiles Devin
   loads from `.devin/agents/`; confirm with `devin doctor`, which reports how many it loaded. The
   profile is what binds the role's tool allowlist and its model, so **never substitute
   `subagent_general` or `subagent_explore` for a role** — that hands the work to a general-purpose
   agent with full tool access and the session's model, and the roster stops meaning anything. Put
   the spec (and, for a reviewer, the diff path) in `task`; the role definition itself is already the
   profile's system prompt and does not need to be repeated. `developer` and `verifier` run with
-  `is_background: false`; the researcher and the three reviewers run with `is_background: true` —
+  `is_background: false`; the researcher and both reviewers run with `is_background: true` —
   see `### Per-tool concurrency facts`.
 - **Antigravity** — `invoke_subagent` with `TypeName: <role>` and `Workspace: inherit`.
   **This call is asynchronous.** The subagent starts and you keep running. You must poll every worker's state
   and wait for `Idle` before reading anything it produced. Do not proceed on the assumption that it blocked.
 - **Codex** — ask for the agent by name: "spawn the `<role>` agent with this spec", then
-  "spawn the `code-reviewer`, `security-reviewer` and `quality-reviewer` agents with this spec and diff path".
+  "spawn the `reviewer` and `security-reviewer` agents with this spec and diff path".
   Codex waits for all spawned agents and returns one consolidated result.
 - **Cursor** — `/<role> <spec>`, one invocation per role.
 

@@ -32,7 +32,7 @@ working tree and escalates. The rest of `superpowers` is complementary.
    approving good work. Either the developer committed (recapture from the pre-dispatch SHA) or it changed
    nothing (that is a `### Blocked` it did not file).
 5. Dispatch `verifier` alone.
-6. Dispatch `code-reviewer`, `security-reviewer` and `quality-reviewer` **in parallel**, each with the spec
+6. Dispatch `reviewer` and `security-reviewer` **in parallel**, each with the spec
    and the diff **path**.
 7. Append the cycle block to the ledger, then decide: all approved and verifier green → append the
    delivery line, `mv` the ledger into `.roster/archive/` (plain `mv` — `git mv` fails on a file this

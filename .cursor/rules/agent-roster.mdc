@@ -4,4 +4,4 @@ alwaysApply: true
 ---
 
 Read `AGENTS.md` before changing code in this repository. It defines the roles and the loop
-you must follow. Invoke subagents explicitly by role name, e.g. `/developer`, then `/code-reviewer`.
+you must follow. Invoke subagents explicitly by role name, e.g. `/developer`, then `/reviewer`.
