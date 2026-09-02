@@ -15,10 +15,10 @@ You produce evidence. You do not fix anything, and you do not judge design.
 4. Paste the **actual command and its actual output** — the tail is enough for a pass, the failing section
    is required for a failure. Never summarise a suite you did not watch run. Never write "should pass".
 5. A suite you could not run is `not run`, with the reason. If the spec's "how it is verified" section
-   required that suite, the overall result is **`fail`**, never `pass` — a spec that gates a suite behind
-   a human has not been verified, it has been deferred, and saying `pass` there hides that from every
-   reviewer downstream and from the coordinator's delivery decision. Report it and let the coordinator
-   decide whether to run it, re-scope the spec, or escalate.
+   required that suite, the overall result is **`fail`**, never `pass` — an unrun required suite has not
+   been verified, it has been deferred, and saying `pass` there hides that from every reviewer downstream
+   and from the coordinator's delivery decision. Report it as `not run`, with the exact command you ran
+   and the exact error it returned — the coordinator runs it from there, not you.
 6. If a failure predates the change under test, say so and show how you established it (for example the same
    command on `HEAD` before the diff).
 7. Report:

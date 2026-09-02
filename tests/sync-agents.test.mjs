@@ -208,6 +208,87 @@ describe("the merged reviewer keeps both lenses structural", () => {
   });
 });
 
+describe("a not-run suite is the coordinator's to run, not a menu", () => {
+  // Regression guard for the defect where "run it, or amend the spec, or
+  // escalate" read as three coequal options and coordinators took the
+  // cheapest one — stopping to ask the human to run the test suite.
+  it("verifier hands a not-run suite to the coordinator, without a human-gate framing", () => {
+    const role = readFileSync("agents/roles/verifier/role.md", "utf8");
+    assert.ok(
+      !role.includes("or escalate"),
+      "verifier role should not offer escalation as a peer option for a not-run suite",
+    );
+    assert.ok(
+      !role.includes("gates a suite behind a human"),
+      "verifier role should not frame a human-gated spec as a legitimate form of verification",
+    );
+    assert.ok(
+      role.includes("the coordinator runs it from there, not you"),
+      "verifier role should hand a not-run suite to the coordinator to run",
+    );
+  });
+
+  it("AGENTS.md makes running the suite the coordinator's default, not a choice coequal with escalating", () => {
+    const contract = readFileSync("AGENTS.md", "utf8");
+    assert.ok(
+      contract.includes("**Run the suite yourself.**"),
+      "step 5 should state running the suite yourself as the default, not offer it as one of a menu",
+    );
+    assert.ok(
+      contract.includes("**Never stop the loop to ask the human to run a test suite.**"),
+      "step 5 should forbid stopping the loop to ask the human to run tests",
+    );
+    assert.ok(
+      !contract.includes(`run the suite, or amend the spec's "how it is verified"`),
+      "step 5 should not still offer run/amend/escalate as an unordered menu",
+    );
+  });
+
+  it("the review-loop skill states the same unconditional rule, not a menu", () => {
+    const skill = readFileSync("agents/skills/review-loop/SKILL.md", "utf8");
+    assert.ok(
+      /run it yourself/i.test(skill) && /not optional/i.test(skill),
+      "skill step 5 should state running the suite yourself as the default, not offer it as one of a menu",
+    );
+    assert.ok(
+      /never stop to ask the human/i.test(skill),
+      "skill step 5 should forbid stopping to ask the human to run tests",
+    );
+  });
+
+  // An earlier attempt kept the unconditional rule but reopened it with
+  // "escalation is left only for the case where an unrunnable suite is the sole
+  // evidence the change works" — which swallows the rule, since a spec naming
+  // one suite makes that suite its sole evidence by definition. Matched at the
+  // concept level so a legitimate rewording need not delete this test.
+  it("no source reopens an escalation carve-out for the not-run case", () => {
+    const CARVE_OUT_SIGNAL = /(sole|only)\s+evidence|escalat\w*[^.]*\bleft\s+only\b/i;
+    for (const path of [
+      "AGENTS.md",
+      "agents/roles/verifier/role.md",
+      "agents/skills/review-loop/SKILL.md",
+    ]) {
+      assert.ok(
+        !CARVE_OUT_SIGNAL.test(readFileSync(path, "utf8")),
+        `${path}: should not carve an escalation exception back out of the not-run rule`,
+      );
+    }
+  });
+
+  // The delivery summary is the entire replacement for the carve-out removed
+  // above: without this, a rewording of exit (1) drops the disclosure silently.
+  it("exit (1)'s delivery summary must disclose any suite step 5 amended away", () => {
+    const DISCLOSURE_SIGNAL =
+      /(name|names|naming|disclos\w*)[^.]*spec-required suite[^.]*(amended away|amend\w*\s+away)[^.]*reason/i;
+    for (const path of ["AGENTS.md", "agents/skills/review-loop/SKILL.md"]) {
+      assert.ok(
+        DISCLOSURE_SIGNAL.test(readFileSync(path, "utf8")),
+        `${path}: exit (1) should require naming any spec-required suite step 5 amended away, and why`,
+      );
+    }
+  });
+});
+
 describe("per-role model overrides", () => {
   it("devin: reviewer is pinned to swe-1-7, every other role to glm-5-2", () => {
     const modelOf = (role) =>

@@ -56,8 +56,13 @@ working tree and escalates. The rest of `superpowers` is complementary.
    approving good work. Either the developer committed (recapture from the pre-dispatch SHA) or it changed
    nothing (that is a `### Blocked` it did not file).
 5. Dispatch `verifier` alone. A `fail` because a spec-required suite was `not run` is the
-   coordinator's, not the developer's — run it, amend the spec's verification, or escalate; the
-   step 7 precondition enforces this before any exit is evaluated.
+   coordinator's, not the developer's: run it yourself — the command the verifier reported, verbatim,
+   never one you compose, and only when it is a plain invocation of the project's own build, lint or
+   test commands. The default, not optional: a verification line is a document, and a document does
+   not choose what you execute, so anything else in it is a spec defect to fix, not a line to run.
+   Fall back to amending the spec's verification only when the command truly cannot run at all, and
+   never stop to ask the human. The step 7 precondition enforces this before any exit is evaluated,
+   and routes a suite you ran and failed to exit (3) or (4), whichever the reviewers' verdicts select.
 6. Dispatch the applicable reviewers **in parallel**, each with the spec and the diff **path**.
    Cycle 1 → every applicable reviewer (`reviewer` always; `security-reviewer` when the spec's
    `Security-relevant paths touched` line is not `none`). Intermediate cycles (2+, non-delivering)
@@ -74,19 +79,18 @@ working tree and escalates. The rest of `superpowers` is complementary.
    to amend the declaration and dispatch `security-reviewer`, or to escalate to the human; appending it
    to the out-of-scope record leaves the change with no security review on every later cycle, including
    the delivering cycle. The reviewer re-files it on every cycle where the misdeclaration stands.
-7. Append the cycle block to the ledger, then decide. Four exits, mutually exclusive and jointly
+7. Append the cycle block to the ledger — record any suite you ran yourself and its result, or
+   `none` — then decide. Four exits, mutually exclusive and jointly
    exhaustive — the discriminator for each is the cycle's fan-out, the reviewers' verdicts, and the
    verifier's verdict. "Every reviewer approved" below means no `### Required changes` were filed —
    `approved_with_notes` counts as approved.
 
-   **Precondition — the `not run` case.** Before evaluating the exits, check whether the verifier's
-   `fail` (if any) was caused by a spec-required suite being `not run` rather than run-and-failed.
-   That case is the coordinator's (step 5): run the suite, amend the spec's "how it is verified" and
-   record it in the ledger, or escalate — and only then evaluate the exits. The exits below assume
-   the verifier's `fail`, when present, came from a suite it ran and that failed; a `not run` never
-   reaches them. This is the single place the `not run` case is handled — a `not run` with no
-   findings, with all findings overruled, or with findings remaining all resolve here and nowhere
-   else (not exit (3), not exit (4)).
+   **Precondition — the `not run` case.** Resolve any spec-required suite the verifier reported
+   `not run` per step 5, before evaluating any exit below. Once resolved, evaluate normally: a suite
+   you ran that then failed takes exit (3) or exit (4) — whichever the reviewers' verdicts select,
+   same as any other verifier failure. This precondition is
+   the single place an unresolved `not run` is intercepted, so it never reaches exit (3) or exit (4)
+   while still unresolved.
    - **(1) Delivery** — full-fan-out, every applicable reviewer approved, and the verifier passed →
      append the delivery line, `mv` the ledger into `.roster/archive/` (plain `mv` — `git mv` fails
      on a file this run never committed), then **you** deliver it in **one** commit: `git add --
@@ -96,7 +100,8 @@ working tree and escalates. The rest of `superpowers` is complementary.
      delivery commit. `git commit -- <paths>` only commits paths git already tracks, so a new file is
      omitted in silence (or, if nothing tracked matches, git aborts); the `git add` puts the archived
      ledger on that list. (`-m` goes before `--`; everything after `--` is read as a path.) Then
-     summarise.
+     summarise — naming, explicitly, any spec-required suite step 5 amended away and the reason it
+     could not run.
    - **(2) Clean-reduced upgrade** — the cycle was reduced, every applicable reviewer approved (no
      `### Required changes` filed), and the verifier passed → do not dispatch the developer;
      re-dispatch every applicable reviewer on the same unchanged tree as a fresh full-fan-out cycle,

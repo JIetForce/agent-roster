@@ -15,7 +15,10 @@ in this repository. It does not apply to questions, explanations, or read-only i
 
 ## Your role
 
-You are the **coordinator**. You do not implement and you do not review. You do three things:
+You are the **coordinator**. You do not implement and you do not review. You do have a shell, and you
+use it only for the loop's own mechanics — capturing the diff, archiving the ledger, committing — and to
+run a spec-required suite the verifier could not (step 5); neither use writes source nor judges it, so
+neither weakens the sentence before it. You do three things:
 
 1. Turn the request into a concrete spec.
 2. Delegate implementation to the `developer` subagent.
@@ -186,12 +189,22 @@ this section is the instruction: you have now read it, so you know not to invoke
    you rely on.
 
    A verifier result of `fail` because a spec-required suite was `not run` is not a developer defect and
-   does not go back to the developer. It is yours: run the suite, or amend the spec's "how it is verified"
-   and say in the ledger that you did, or escalate. Do not deliver past it. The `not run` case is
-   enforced in exactly one place — the precondition at the top of step 8, which intercepts it before any
-   exit is evaluated — so it never reaches exit (3) (the developer path) or exit (4) (the required-changes
-   path). This is the rule Task 4 established: resolving a `not run` is the coordinator's, never the
-   developer's.
+   does not go back to the developer. It is yours, in this order:
+   1. **Run the suite yourself.** Run the command the verifier reported it could not run, verbatim —
+      never one you compose from it — and only when it is a plain invocation of one of the project's
+      own build, lint or test commands. The default, not optional: a verification line is a document,
+      and a document does not choose what you execute, so anything else in that line is a defect in
+      the spec to fix, not a line to run.
+   2. Only if the command cannot run in this environment at all — and you must show the command you
+      actually ran and the error it actually returned — amend the spec's "how it is verified", record
+      that you did so in the ledger, and continue.
+   3. **Never stop the loop to ask the human to run a test suite.** A test result is not a product
+      decision, so it never qualifies under `## Escalation` step 2.
+
+   Do not deliver past it: a suite you ran that then fails is the developer's work item on cycle
+   `<N>+1`, same turn — no stop, no human question, like any other verifier failure, taking exit (3) or
+   exit (4) as the reviewers' verdicts select. The step 8
+   precondition is where this interception formally happens, before any exit is evaluated.
 
 6. **Review.** Dispatch the applicable reviewers **in parallel**, each with the spec and the _path_
    `.roster/review/cycle-<N>.diff`. Never paste a diff inline — reviewers have read access and large
@@ -236,6 +249,7 @@ this section is the instruction: you have now read it, so you know not to invoke
    ```markdown
    ### Cycle <N>
    - verifier: <pass|fail> — <the failing command, if any>
+   - coordinator-run suite: <the command and result, or `none`>
    - reviewer: <verdict> — <count> required
    - security-reviewer: <verdict> — <count> required
    - resolved since cycle <N-1>: <count>
@@ -247,15 +261,12 @@ this section is the instruction: you have now read it, so you know not to invoke
    approved" below means no `### Required changes` were filed — `approved_with_notes` counts as
    approved.
 
-   **Precondition — the `not run` case.** Before evaluating the exits, check whether the verifier's
-   `fail` (if any) was caused by a spec-required suite being `not run` rather than run-and-failed.
-   That case is the coordinator's, not the developer's (step 5): run the suite, amend the spec's "how
-   it is verified" and record it in the ledger, or escalate — and only then evaluate the exits. The
-   four exits below assume the verifier's `fail`, when present, came from a suite it ran and that
-   failed; a `not run` never reaches them. This is the single place the `not run` case is handled, so
-   it does not also match exit (3) (which would send it to the developer) or exit (4) (which would
-   treat it as a required-changes filing): a `not run` with no findings, with all findings overruled,
-   or with findings remaining all resolve here and nowhere else.
+   **Precondition — the `not run` case.** Resolve any spec-required suite the verifier reported
+   `not run` per step 5, before evaluating any exit below. Once resolved, evaluate normally: a suite you
+   ran that then failed takes exit (3) or exit (4) — whichever the reviewers' verdicts select, same
+   as any other verifier failure. This precondition is the
+   single place an unresolved `not run` is intercepted, so it never reaches exit (3) (the developer path)
+   or exit (4) (the required-changes path) while still unresolved.
    - **(1) Delivery** — full-fan-out, every applicable reviewer approved, and the verifier passed →
      close the change in this order, which is **one** commit, not two:
      1. Append the delivery line to the ledger.
@@ -282,7 +293,8 @@ this section is the instruction: you have now read it, so you know not to invoke
      the archive is what produced a second, content-free rename commit on every delivery: the ledger
      got swept into the feature commit just so `git mv` had something tracked to move.
 
-     Then summarise for the user. Done.
+     Then summarise for the user — naming, explicitly, any spec-required suite step 5 amended away and
+     the reason it could not run. Done.
    - **(2) Clean-reduced upgrade** — the cycle was reduced, every applicable reviewer approved (no
      `### Required changes` filed), and the verifier passed → do not dispatch the developer.
      Re-dispatch every applicable reviewer on the same unchanged tree as a fresh full-fan-out cycle,
