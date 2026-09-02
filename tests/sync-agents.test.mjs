@@ -289,6 +289,60 @@ describe("a not-run suite is the coordinator's to run, not a menu", () => {
   });
 });
 
+describe("review cost is bounded by the size of the change", () => {
+  // The loop's acceptance test used to be "no reviewer objects", and that target
+  // recedes as the diff grows: every cycle's fix is new surface for the next
+  // cycle's findings, all of them true. These rules damp it.
+  it("step 1 offers an off-ramp for a change too small to be worth a cycle", () => {
+    const contract = readFileSync("AGENTS.md", "utf8");
+    assert.match(contract, /\|\s*\*\*Trivial\*\*/, "step 1's table should carry a trivial row");
+    assert.match(contract, /off-ramp/i, "the trivial row should be named as an off-ramp, not left implicit");
+  });
+
+  it("the coordinator may not promote a note into the developer's work item", () => {
+    for (const path of ["AGENTS.md", "agents/skills/review-loop/SKILL.md"]) {
+      assert.match(
+        readFileSync(path, "utf8"),
+        /list may only shrink/i,
+        `${path}: exit (4) should forbid growing the work item after the step 1 gate`,
+      );
+    }
+  });
+
+  it("a bounded change gets one review cycle, and the budget is not the coordinator's to extend", () => {
+    assert.match(
+      readFileSync("AGENTS.md", "utf8"),
+      /bounded_review_cycles/,
+      "step 9 should name the bounded budget",
+    );
+    const config = JSON.parse(readFileSync("config/agents.json", "utf8"));
+    assert.equal(config.harness.bounded_review_cycles, 1);
+  });
+
+  it("both reviewers treat a finding against a previous cycle's remediation as a note", () => {
+    for (const path of [
+      "agents/roles/reviewer/role.md",
+      "agents/roles/security-reviewer/role.md",
+    ]) {
+      assert.match(
+        readFileSync(path, "utf8"),
+        /earlier cycle of \*this same run\*/,
+        `${path}: self-generated text should stay out of Required changes`,
+      );
+    }
+  });
+
+  it("delivery removes this run's captured diffs", () => {
+    for (const path of ["AGENTS.md", "agents/skills/review-loop/SKILL.md"]) {
+      assert.match(
+        readFileSync(path, "utf8"),
+        /rm -f \.roster\/review\/cycle-\*\.diff/,
+        `${path}: exit (1) should delete the captured diffs, which nothing else removes`,
+      );
+    }
+  });
+});
+
 describe("per-role model overrides", () => {
   it("devin: reviewer is pinned to swe-1-7, every other role to glm-5-2", () => {
     const modelOf = (role) =>

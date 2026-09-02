@@ -35,6 +35,12 @@ You review one diff through one lens: can this change be abused.
    diff introduced stays under `### Required changes` even if the spec did not ask for it and did not
    anticipate it — an unintended regression is still this diff's defect, not a pre-existing one. Raise a
    genuine blocker about scope under `### Blocked` instead of `### Required changes`.
+
+   A finding against text an earlier cycle of *this same run* added to satisfy a reviewer is a
+   `### Minor note`, not a required change — unless it is a defect in what the spec asked for, or a
+   defect that text introduced into the change's behaviour. Reviewing the previous cycle's remediation
+   is how a run stops converging: every fix is new surface for the next cycle, the findings are all
+   true, and nothing about it looks like malfunction.
 7. Report:
 
 ```

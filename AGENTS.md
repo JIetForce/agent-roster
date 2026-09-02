@@ -77,12 +77,21 @@ this section is the instruction: you have now read it, so you know not to invoke
    | The change | Spec | Plan | This loop |
    | --- | --- | --- | --- |
    | A question, an explanation, read-only investigation | — | — | not engaged |
+   | **Trivial** — one verification run and the shown diff settle it completely: a typo, a comment, a rename with no callers, a one-line prose or configuration edit | a sentence **in chat** | — | not engaged — change it, verify it, show the diff |
    | **Bounded** — the flow you are changing already exists here to read, and one pass of one writer covers it | a paragraph **in chat** | — | one run |
    | **Architectural** — a new subsystem, a change to an interface others depend on, or more than one independently testable deliverable | `superpowers:brainstorming` → a file under `docs/superpowers/specs/` | `superpowers:writing-plans` → a file under `docs/superpowers/plans/` | **one run per plan task** |
 
    Understanding the kind of application is not enough to call something bounded: bounded means the flow you
    are about to change is already here to read. When you are between two rows, take the lower one. The
    ratchet is one-way — complexity discovered mid-change upgrades the row, and nothing downgrades it.
+
+   The trivial row is an off-ramp, and it exists because this loop is not free: one cycle is four
+   dispatches, and on a change that small the review costs more than the defect it might find. Taking it
+   means you make the change, run the verification yourself, and show the user the diff — no ledger, no
+   capture, no dispatches. If you find yourself wanting a second opinion on something you called trivial,
+   you called it wrong: it was bounded. Reach for this row deliberately. An agent that never takes it
+   spends a subsystem's process on a typo, which is the failure this table exists to prevent in the other
+   direction.
 
    A spec in either form states three things: what changes, what must not change, and how it will be verified.
 
@@ -289,6 +298,16 @@ this section is the instruction: you have now read it, so you know not to invoke
         file, so the commit looks complete but contains no ledger. On the architectural path, use the paths
         the plan's task specifies.
 
+     4. Delete this run's captured diffs:
+
+        ```bash
+        rm -f .roster/review/cycle-*.diff
+        ```
+
+        They are scratch, they are never committed, and nothing else removes them. `.roster/review/`
+        cannot be git-ignored (step 4), so every diff left behind sits in `git status` for the life of
+        the repository.
+
      One commit per run of this loop, not one per cycle and not one per artefact. Committing before
      the archive is what produced a second, content-free rename commit on every delivery: the ledger
      got swept into the feature commit just so `git mv` had something tracked to move.
@@ -313,7 +332,15 @@ this section is the instruction: you have now read it, so you know not to invoke
      ran that failed; a `not run` is intercepted by the step 8 precondition before this exit is
      evaluated, so it never reaches this branch.
    - **(4) Required changes filed** — at least one `### Required changes` item was filed → merge all
-     of them into one list. Any required change you are **not** passing to the developer is one you
+     of them into one list.
+
+     **That list may only shrink.** A reviewer's `### Minor notes` are notes: they go to the human in
+     the delivery summary, or into a follow-up, never into the developer's work item — and the same bar
+     applies to anything you noticed yourself. Promoting a note to a required change widens the change
+     after the step 1 gate, on your authority alone, with nobody to check you; the text you add then
+     buys the next cycle's findings, and a small change stops converging. If a note genuinely must be
+     fixed in this run, that is a new spec — go back to step 1's gate and ask. Only two things belong on
+     this list: what a reviewer filed under `### Required changes`, and a verifier failure. Any required change you are **not** passing to the developer is one you
      overruled: append it to the spec's out-of-scope record (the `## Out of scope (already decided)`
      section of a file spec, or the "Already decided:" list of a bounded chat spec) with one line of
      reasoning **before you dispatch the next cycle**. If every required change was overruled, none
@@ -338,10 +365,19 @@ this section is the instruction: you have now read it, so you know not to invoke
      files nothing, so a reduced cycle can hide growth — the list can look stable while an un-dispatched
      lens has findings nobody collected. Reduced cycles do not count toward the stall limit.
    - **A worker is blocked** and you cannot resolve it from the repository — see `## Escalation`.
+   - **The budget runs out.** The cycle budget follows the spec's row in step 1, and it is a budget, not
+     a guard: spending it is an ordinary outcome, not a failure. A **bounded** change gets **one** review
+     cycle (`bounded_review_cycles` in `config/agents.json`). If that cycle files required changes, fix
+     them and deliver; open a second cycle only when the fix was large enough to need a review of its
+     own, and never a third without asking the human. An **architectural** change gets
+     `max_review_cycles` per plan task. When the budget is spent and findings remain, **stop**: show the
+     human the outstanding list and your recommendation, and let them say deliver or continue. Opening
+     the next cycle on your own authority is the decision this rule takes away from you.
    - **The runaway guard trips.** Cycle `max_review_cycles` (8) completes without approval. This is a bug in
      the spec or in this roster, not a signal to try again; escalate and say so.
 
-   Nothing else stops the loop. A rejection with a shrinking outstanding list is the loop working.
+   Nothing else stops the loop. A rejection with a shrinking outstanding list is the loop working — but a
+   shrinking list is not by itself a reason to keep going once the budget is spent.
 
 ## Parallel dispatch
 

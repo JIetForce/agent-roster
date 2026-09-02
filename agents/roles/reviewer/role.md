@@ -41,6 +41,12 @@ leftover you get to if the first leaves you room — your report is judged incom
    diff introduced stays under `### Required changes` even if the spec did not ask for it and did not
    anticipate it — an unintended regression is still this diff's defect, not a pre-existing one. Raise a
    genuine blocker about scope under `### Blocked` instead of `### Required changes`.
+
+   A finding against text an earlier cycle of *this same run* added to satisfy a reviewer is a
+   `### Minor note`, not a required change — unless it is a defect in what the spec asked for, or a
+   defect that text introduced into the change's behaviour. Reviewing the previous cycle's remediation
+   is how a run stops converging: every fix is new surface for the next cycle, the findings are all
+   true, and nothing about it looks like malfunction.
 8. The spec carries a `Security-relevant paths touched:` line that decides whether
    `security-reviewer` is dispatched (AGENTS.md step 6). If the spec declared `none` but the diff
    touches a path that handles authentication or sessions, authorisation or ownership checks, secrets

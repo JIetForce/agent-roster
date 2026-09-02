@@ -1,5 +1,6 @@
 {
   "harness": {
+    "bounded_review_cycles": 1,
     "max_review_cycles": 8,
     "stall_limit": 2,
     "diff_dir": ".roster/review",

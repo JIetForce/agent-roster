@@ -15,7 +15,11 @@ generic planning skill: where they disagree with the loop below, the loop wins.
 invoke them.** They review a commit range and never stop for the human; this loop reviews the uncommitted
 working tree and escalates. The rest of `superpowers` is complementary.
 
-1. Write the spec and **wait for the user to agree** before dispatching anything. Bounded change → a
+1. Write the spec and **wait for the user to agree** before dispatching anything. **Trivial change** —
+   one verification run and the shown diff settle it completely (a typo, a comment, a rename with no
+   callers, a one-line edit) → this loop is not engaged: change it, verify it, show the diff. One cycle
+   is four dispatches, and on a change that small the review costs more than the defect it might find;
+   wanting a second opinion means it was not trivial. Bounded change → a
    paragraph in chat. Architectural → `superpowers:brainstorming` for the spec file and
    `superpowers:writing-plans` for the plan, then one run of this loop per plan task. Dispatch `researcher`
    first, in parallel, if you would otherwise be guessing. The spec carries an out-of-scope record of
@@ -101,7 +105,8 @@ working tree and escalates. The rest of `superpowers` is complementary.
      omitted in silence (or, if nothing tracked matches, git aborts); the `git add` puts the archived
      ledger on that list. (`-m` goes before `--`; everything after `--` is read as a path.) Then
      summarise — naming, explicitly, any spec-required suite step 5 amended away and the reason it
-     could not run.
+     could not run. Finally `rm -f .roster/review/cycle-*.diff`: they are scratch, never committed,
+     and nothing else removes them, so every one left behind sits in `git status` for good.
    - **(2) Clean-reduced upgrade** — the cycle was reduced, every applicable reviewer approved (no
      `### Required changes` filed), and the verifier passed → do not dispatch the developer;
      re-dispatch every applicable reviewer on the same unchanged tree as a fresh full-fan-out cycle,
@@ -120,7 +125,11 @@ working tree and escalates. The rest of `superpowers` is complementary.
      verifier ran that failed; a `not run` is intercepted by the precondition above before this
      exit is evaluated.
    - **(4) Required changes filed** — at least one `### Required changes` item was filed → merge
-     them; any you are not passing to the developer is one you overruled, so append it to the spec's
+     them. **The list may only shrink:** `### Minor notes` are notes — they go to the human at
+     delivery or into a follow-up, never into the developer's work item, and the same bar applies to
+     anything you noticed yourself. Promoting one widens the change after the step 1 gate on your
+     authority alone, and the text you add buys the next cycle's findings; if it must be fixed in this
+     run, that is a new spec — go back to the gate and ask. Then: any you are not passing to the developer is one you overruled, so append it to the spec's
      out-of-scope record with one line of reasoning **before** re-dispatch (step 1). If every
      required change was overruled, none remains, **and the verifier passed**, do not dispatch the
      developer — an empty list produces an empty diff, which step 4 treats as a loop-stopping error;
@@ -131,7 +140,11 @@ working tree and escalates. The rest of `superpowers` is complementary.
      If the verifier failed, the developer takes the verifier's failure as a work item alongside any
      non-overruled required changes, so the all-overruled re-dispatch never fires on a failing tree.
      Otherwise hand the remaining list to `developer` and return to step 3.
-8. Stop only on a stall (two cycles with no shrinkage), an unresolvable `### Blocked`, or cycle 8.
+8. Stop when the **budget** runs out — a bounded change gets **one** review cycle
+   (`bounded_review_cycles`), an architectural one gets `max_review_cycles` per plan task. Spending it
+   is an ordinary outcome: show the human the outstanding list and your recommendation and let them say
+   deliver or continue, rather than opening the next cycle yourself. Stop also on a stall (two cycles
+   with no shrinkage), an unresolvable `### Blocked`, or cycle 8.
    Measure the stall across cycles that ran the same reviewers — a dropped reviewer files nothing, so a
    reduced cycle can hide growth: the list can look stable while an un-dispatched lens has findings
    nobody collected. Reduced cycles do not count toward the stall limit.
