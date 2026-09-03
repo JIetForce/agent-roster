@@ -175,22 +175,22 @@ describe("harness skill projection", () => {
   it("devin's dispatch line names the profile, not the general subagent", () => {
     const text = readFileSync(".devin/skills/review-loop/SKILL.md", "utf8");
     assert.match(text, /profile: "<role>"/, "dispatch line does not pass a named profile");
-    // Pin the direction, not just the presence of `is_background`. A writer
-    // dispatched in the background has its `exec` and `edit` tools auto-denied
-    // without a prompt, so it returns a report having changed nothing — the
-    // empty-diff failure mode AGENTS.md devotes its "empty diff stops the loop"
-    // paragraph to. The line contains both `true` and `false`, so asserting
-    // only that each appears somewhere would pass under a reversal. Bind each
-    // value to the roles it applies to by matching the surrounding words.
+    // Pin the direction, not just the presence of `is_background`. Probe evidence
+    // (AGENTS.md, "Per-tool concurrency facts", run 2026-09-03) showed a background
+    // `run_subagent` running `exec` with no denial, so writers now dispatch in the
+    // background the same as the readers, and the line no longer contains `false`
+    // anywhere. Asserting only that `is_background` (or `true`) appears somewhere
+    // would keep passing even if a future edit silently pinned a role back to the
+    // foreground. Bind the value to the roles it applies to by matching the
+    // surrounding words, and confirm `false` has not crept back in.
     assert.match(
       text,
-      /`developer` and `verifier` run with `is_background: false`/,
-      "dispatch line does not put the writers (developer, verifier) in the foreground",
+      /`developer` and `verifier` run with `is_background: true`/,
+      "dispatch line does not put the writers (developer, verifier) in the background",
     );
-    assert.match(
-      text,
-      /the researcher and both reviewers run with `is_background: true`/,
-      "dispatch line does not put the readers (researcher, both reviewers) in the background",
+    assert.ok(
+      !text.includes("is_background: false"),
+      "dispatch line still pins some role to the foreground",
     );
   });
 });

@@ -415,12 +415,12 @@ Research fans out before step 1 and never overlaps it.
 
 - **Claude Code** — 20 concurrent subagents by default; nesting depth 3. Dispatch several `Agent` calls in one
   message to run them together.
-- **Devin** — concurrent, but **only one foreground subagent at a time**. `researcher`,
-  `reviewer` and `security-reviewer` therefore go `is_background: true`:
-  their tools are read-only and auto-approved, so a background run is safe, and it is the only
-  way to get both reviewers onto one diff at once. `developer` and `verifier` go
-  `is_background: false` — a background subagent auto-denies any tool you have not already approved
-  this session, so a background writer fails the first time it runs a command.
+- **Devin** — concurrent, but **only one foreground subagent at a time**. All five roles —
+  `developer`, `verifier`, `researcher`, `reviewer`, `security-reviewer` — go `is_background: true`:
+  it is the only way to get more than one subagent running at once. Probe run 2026-09-03 from this
+  repository: a background `run_subagent` with `profile: "developer"`, default
+  `--permission-mode auto`, ran `exec` with no denial and no tool pre-approved that session — the
+  marker file it wrote landed on disk.
 - **Antigravity** — concurrent and **asynchronous**. `invoke_subagent` returns before the work is done. Poll
   every worker to `Idle` before you read anything it produced. Nesting depth 10.
 - **Codex** — concurrent; it waits for all spawned agents and returns a consolidated result.
@@ -445,9 +445,9 @@ rules, in this order.
   prefix at the cache-read rate, so about a dozen of them cost the one reprocess they were avoiding: past
   roughly 45 minutes of waiting, take the miss instead.
 
-It never reaches the writers. `developer` and `verifier` stay `is_background: false` on Devin, however long
-they run: a background writer is auto-denied `exec`/`edit` **silently** and returns an empty report, not a
-`### Blocked` — and an empty diff is what step 4 stops the loop over.
+It reaches the writers too: `developer` and `verifier` now run `is_background: true` on Devin, so the
+same poll applies to them. Poll the worker's **state** — running, finished, stuck — never its output;
+pulling a report into the coordinator's context before the worker is done buys nothing.
 
 ## Escalation
 
@@ -508,9 +508,8 @@ you have none, run the loop inline. `<role>` below is any of the five: `develope
   `subagent_general` or `subagent_explore` for a role** — that hands the work to a general-purpose
   agent with full tool access and the session's model, and the roster stops meaning anything. Put
   the spec (and, for a reviewer, the diff path) in `task`; the role definition itself is already the
-  profile's system prompt and does not need to be repeated. `developer` and `verifier` run with
-  `is_background: false`; the researcher and the reviewers run with `is_background: true` —
-  see `### Per-tool concurrency facts`.
+  profile's system prompt and does not need to be repeated. All five roles run with
+  `is_background: true` — see `### Per-tool concurrency facts`.
 - **Antigravity** — `invoke_subagent` with `TypeName: <role>` and `Workspace: inherit`.
   **This call is asynchronous.** The subagent starts and you keep running. You must poll every worker's state
   and wait for `Idle` before reading anything it produced. Do not proceed on the assumption that it blocked.
