@@ -430,6 +430,25 @@ Research fans out before step 1 and never overlaps it.
 **Workers do not dispatch workers.** Only the coordinator dispatches. A worker that wants another worker's
 output says so under `### Blocked` and lets you decide.
 
+### Cache discipline
+
+A prompt cache expires after about five minutes idle and the coordinator makes no requests while it waits, so
+a long wait is billed a full reprocess of the prefix on wake-up — money and latency, never correctness. Two
+rules, in this order.
+
+- **Where the harness holds a long TTL, let it, and do not poll.** Claude Code runs the main thread on a
+  1-hour TTL where the account is entitled and not in overage — `ENABLE_PROMPT_CACHING_1H` forces it on,
+  `FORCE_PROMPT_CACHING_5M` off, and there is no settings key for it. Polling to keep that warm is pure cost.
+- **Otherwise poll, and stop when polling stops paying.** Wait on a background worker in 3–4 minute polls
+  (Devin: `read_subagent(block=true, timeout=180)`), and background a command expected to outlast five
+  minutes rather than blocking on it (Devin: `timeout: 0`, then `get_output`). Each poll re-sends the whole
+  prefix at the cache-read rate, so about a dozen of them cost the one reprocess they were avoiding: past
+  roughly 45 minutes of waiting, take the miss instead.
+
+It never reaches the writers. `developer` and `verifier` stay `is_background: false` on Devin, however long
+they run: a background writer is auto-denied `exec`/`edit` **silently** and returns an empty report, not a
+`### Blocked` — and an empty diff is what step 4 stops the loop over.
+
 ## Escalation
 
 A worker that finds the task impossible or self-contradictory does not guess and does not silently pick a
